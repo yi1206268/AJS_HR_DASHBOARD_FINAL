@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AJ Solutions · HR Dashboard</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f8f9fa; font-family: 'IBM Plex Mono', 'Courier New', monospace; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #e9ecef; }
+  ::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #adb5bd; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useCallback } = React;
+
+
+// ─── RAW WORKER DATA (파일1 기준 1:1 매칭, 1101명, TS 제외) ──────────────────
+// [id, name, dept, position, grade, gradeNum, subLevel, tenure, group, processScore, floor, absentDays]
+const RAW_DATA = [["OR005", "Đặng Thị Hoa", "OFFICE", "Nurse", "--", 0, "--", 73.0, "F", 0, "1F", 3, true], ["OR010", "Nguyễn Thị Nhớ", "Line 2", "Technical Line 1,2, 5", "--", 0, "--", 73.0, "A-1", 5.7, "2F", 3, true], ["OR013", "Nguyễn Thị Thảo Hiền", "Line 8", "Technical Line 8", "--", 0, "--", 73.0, "A-1", 3.9, "2F", 3, true], ["OR026", "Nguyễn Thanh Hòa", "Warehouse", "WHSE Manager", "--", 0, "--", 70.0, "C", 4.5, "1F", 3, true], ["OR007", "Đặng Văn Dũng", "Electricity", "Electricity", "--", 0, "--", 73.0, "F", 5.0, "1F", 3, true], ["OR008", "Phan Viết Dũng", "Maintenance", "Mechanical", "--", 0, "--", 73.0, "F", 10.0, "1F", 3, true], ["OR042", "Nguyễn Văn Khanh", "Maintenance", "Mechanical", "--", 0, "--", 65.6, "F", 10.0, "1F", 3, true], ["OR028", "Lê Thị Ngọc Nga", "OFFICE", "HR Staff", "--", 0, "--", 69.7, "F", 0, "1F", 3, true], ["OR039", "Nguyễn Thị Hải Yến", "OFFICE", "HR Management", "--", 0, "--", 64.2, "F", 0, "1F", 3, true], ["OR047", "Hồ Kiều Diễm Chi", "OFFICE", "F.G", "--", 0, "--", 58.9, "F", 0, "1F", 3, true], ["OR043", "Huỳnh Thanh Sang", "Warehouse", "WHSE Staff", "--", 0, "--", 69.6, "C", 4.5, "1F", 3, true], ["OR036", "Nguyễn Thùy Chúc Vy", "Warehouse", "Account Warehouse", "--", 0, "--", 72.5, "C", 4.5, "1F", 3, true], ["OR014", "Võ Thanh Sang", "Line 1", "Leader 1", "--", 0, "--", 73.0, "A-1", 4.4, "2F", 3, true], ["OR054", "Phạm Chí Thùy Oanh", "OFFICE", "PM", "--", 0, "--", 49.0, "F", 0, "1F", 3, true], ["OR058", "Lê Hữu Thu Trân", "Warehouse", "Account Warehouse", "--", 0, "--", 48.8, "C", 4.5, "1F", 3, true], ["OR059", "Võ Minh Lý", "Warehouse", "Account Warehouse", "--", 0, "--", 48.4, "C", 4.5, "1F", 3, true], ["OR061", "Trương Đình Tuân", "Supply 3", "Technical Computer", "--", 0, "--", 48.3, "B", 4.3, "2F", 3, true], ["OR063", "Nguyễn Thái Sơn", "OFFICE", "QA", "--", 0, "--", 47.4, "F", 0, "1F", 3, true], ["OR067", "Đinh Thị Kim Ngân", "OFFICE", "QA", "--", 0, "--", 46.0, "F", 0, "1F", 3, true], ["OR068", "Cao Khánh Vân", "OFFICE", "HR Staff", "--", 0, "--", 46.0, "F", 0, "1F", 3, true], ["OR074", "Ngô Thị Huyền Trâm", "OFFICE", "F.G", "--", 0, "--", 42.5, "F", 0, "1F", 3, true], ["OR078", "Nguyễn Văn Nho", "Laser", "Leader Laser", "--", 0, "--", 41.9, "D", 3.6, "1F", 3, true], ["OR081", "Lê Đăng Khoa", "OFFICE", "IT", "--", 0, "--", 40.3, "F", 0, "1F", 3, true], ["OR085", "Phạm Thị Ngọc Trâm", "OFFICE", "PM", "--", 0, "--", 38.9, "F", 0, "1F", 3, true], ["OR088", "Phạm Văn Khởi", "Sample Room & I.E", "Leader Pattern & Lectra", "--", 0, "--", 37.9, "F", 4.8, "1F", 3, true], ["OR092", "Huỳnh Hòa Hiệp", "Line 28", "Technical Line 27", "--", 0, "--", 37.3, "A-2", 4.7, "1F", 3, true], ["OR094", "Lê Hoàng Long", "Cutting Dept", "Cutting Manager ", "--", 0, "--", 36.6, "D", 4.9, "1F", 3, true], ["OR097", "Nguyễn Văn Thư", "Divide", "Leader Divide", "--", 0, "--", 26.9, "D", 4.2, "1F", 3, true], ["OR098", "Dương Thanh Hương", "Line 24", "Technical Line 24, 25, 26, L#part", "--", 0, "--", 26.7, "A-2", 4.2, "1F", 3, true], ["OR099", "Phạm Văn Chúc", "OFFICE", "SOE", "--", 0, "--", 26.9, "F", 0, "1F", 3, true], ["OR102", "Nguyễn Thị Diễm Trinh", "Warehouse", "Account Warehouse", "--", 0, "--", 43.6, "C", 4.5, "1F", 3, true], ["OR103", "Trần Thị Hồng Nhung", "OFFICE", "PM", "--", 0, "--", 21.9, "F", 0, "1F", 3, true], ["OR105", "Nguyễn Thị Thu Thảo", "OFFICE", "PM", "--", 0, "--", 26.4, "F", 0, "1F", 2, true], ["OR108", "Trần Khánh Linh", "OFFICE", "HR Staff", "--", 0, "--", 18.5, "F", 0, "1F", 3, true], ["OR109", "Trang Thị Bích Loan", "OFFICE", "QA", "--", 0, "--", 13.4, "F", 0, "1F", 3, true], ["OR110", "Nguyễn Thị Lý", "OFFICE", "QA", "--", 0, "--", 12.9, "F", 0, "1F", 3, true], ["OR111", "Phan Hải Liêm", "OFFICE", " Production Manager", "--", 0, "--", 12.9, "F", 0, "1F", 3, true], ["OR112", "Nguyễn Thị Thuỳ Dương", "OFFICE", "HR Staff", "--", 0, "--", 12.3, "F", 0, "1F", 3, true], ["OR113", "Phạm Thị Kim Lài", "Sample Room & I.E", "Assistant Pattern & Lectra", "--", 0, "--", 9.9, "F", 4.8, "1F", 3, true], ["OR114", "Trương Phước Thành", "Sample Room & I.E", "Staff Pattern  (nhân viên Rập)", "--", 0, "--", 12.0, "F", 4.8, "1F", 3, true], ["OR115", "Huỳnh Thị Trúc Như", "OFFICE", "PM", "--", 0, "--", 8.0, "F", 0, "1F", 3, true], ["OR117", "Trần Thị Hoài Nhân", "OFFICE", "HSE", "--", 0, "--", 1.9, "F", 0, "1F", 3, true], ["OR118", "Tô Thị Mỹ Chi", "OFFICE", "PM", "--", 0, "--", 1.1, "F", 0, "1F", 3, true], ["OR119", "Dương Hoài Bảo", "Production ", "Technical ", "--", 0, "--", 1.0, "F", 0, "1F", 1, true], ["OR120", "Hoàng Thị Anh Thư", "OFFICE", "PM", "--", 0, "--", 0.8, "F", 0, "1F", 3, true], ["OR122", "Vũ Thị Ngọc Liên", "OFFICE", "PM", "--", 0, "--", -0.2, "F", 0, "1F", 1, true], ["F0006", "Đinh Quốc Hùng", "Line 3.2", "Leader 3.2, 3.3", "G5", 5, "G5", 73.0, "A-1", 5.9, "2F", 3, false], ["F0010", "Trần Thị Mỹ Ngân", "Line 1", "Sewer 1", "G3", 3, "G3-A", 73.0, "A-1", 4.4, "2F", 3, false], ["F0019", "Nguyễn Thị Thu Tâm", "Line 1", "Sewer 1", "G3", 3, "G3-A", 73.0, "A-1", 4.4, "2F", 3, false], ["F0025", "Trần Thị Nhuân", "Line 1", "Helper 1", "G3", 3, "G3-A", 73.0, "A-1", 4.4, "2F", 3, false], ["F0039", "Trần Thị Thảo Nguyên", "QC & Packing Dept", "IQC", "G3", 3, "G3-A", 73.0, "E", 3.8, "1F", 3, false], ["F0040", "Trần Thị Mùi", "Preparation", "Preparation", "G3", 3, "G3-A", 73.0, "C", 2.9, "1F", 3, false], ["F0044", "Phạm Sỹ Hoàng", "Supply 3", "Bartak", "G3", 3, "G3-A", 73.0, "B", 4.3, "2F", 3, false], ["F0047", "Lê Thị Hồng Nhung", "Line 3.2", " Vice team Leader 3.2", "G4", 4, "G4-A", 73.0, "A-1", 5.9, "2F", 3, false], ["F0048", "Trần Thị Nhàn", "Line 2", "Sewer 2", "G4", 4, "G4-A", 73.0, "A-1", 5.7, "2F", 3, false], ["F0052", "Trần Thị Thu Thảo", "Line 8", "Sewer 8", "G3", 3, "G3-A", 73.0, "A-1", 3.9, "2F", 3, false], ["F0053", "Hoàng Thị Nguyệt Nga", "Line 23", "Sewer 23", "G3", 3, "G3-A", 73.0, "A-2", 4.6, "1F", 3, false], ["F0065", "Phạm Thị Bình", "Line 1", "Sewer 1", "G3", 3, "G3-A", 73.0, "A-1", 4.4, "2F", 3, false], ["F0070", "Nguyễn Văn Thiện", "Line 3.1", "Helper 3.1", "G3", 3, "G3-A", 73.0, "A-1", 3.5, "2F", 3, false], ["F0072", "Tống Thị Mỹ Dung", "Line 3.2", "Sewer 3.2", "G4", 4, "G4-A", 73.0, "A-1", 5.9, "2F", 3, false], ["F0073", "Nguyễn Thị Hồng Nhung", "Supply 3", "Computer", "G3", 3, "G3-A", 73.0, "B", 4.3, "2F", 3, false], ["F0081", "Nguyễn Thị Xuân Hồng", "Line 7", "Sewer 7", "G2", 2, "G2", 73.0, "A-1", 3.5, "2F", 3, false], ["F0086", "Hồ Thị Sâm", "Line 5", "Sewer 5", "G3", 3, "G3-A", 73.0, "A-1", 4.8, "2F", 3, false], ["F0095", "Trần Thị Hòa", "Line 6", "Sewer 6", "G3", 3, "G3-A", 73.0, "A-1", 4.6, "2F", 3, false], ["F0102", "Lê Thị Lan", "Supply 3", "Leader Computer", "G5", 5, "G5", 73.0, "B", 4.3, "2F", 3, false], ["F0107", "Cù Thị An", "Line 2", "Sewer 2", "G3", 3, "G3-A", 73.0, "A-1", 5.7, "2F", 3, false], ["F0112", "Dương Thị Hồng", "Cleaner", "Cleaner", "G3", 3, "G3-A", 73.0, "C", 1.0, "1F", 3, false], ["F0114", "Trần Thị Bình", "Line 3.2", "Sewer 3.2", "G4", 4, "G4-A", 73.0, "A-1", 5.9, "2F", 3, false], ["F0129", "Nguyễn Thị Như Ý", "Line 6", "Leader 6", "G5", 5, "G5", 73.0, "A-1", 4.6, "2F", 3, false], ["F0130", "Mã Thành Nhân", "Line 3.2", "Sewer 3.2", "G4", 4, "G4-A", 73.0, "A-1", 5.9, "2F", 3, false], ["F0136", "Bùi Thị Huyền", "Line 8", "Sewer 8", "G3", 3, "G3-A", 73.0, "A-1", 3.9, "2F", 2, false], ["F0142", "Phan Thanh Quốc", "Supply 3", "Computer", "G4", 4, "G4-A", 73.0, "B", 4.3, "2F", 3, false], ["F0150", "Nguyễn Thị Thùy Trang", "Line 1", "Sewer 1", "G3", 3, "G3-A", 73.0, "A-1", 4.4, "2F", 3, false], ["F0151", "Trần Thị Mỹ Duyên", "Line 1", "Sewer 1", "G3", 3, "G3-A", 73.0, "A-1", 4.4, "2F", 3, false], ["F0177", "Trần Thị Kim Liên", "Supply 3", "Bartak", "G3", 3, "G3-A", 72.9, "B", 4.3, "2F", 3, false], ["F0191", "Nguyễn Thị Tuyên", "Line 4", "Sewer 4", "G3", 3, "G3-A", 60.0, "A-1", 4.4, "2F", 3, false], ["F0194", "Nguyễn Thị Kim Loan", "Line 3.4", "Technical Line 3.4", "--", 0, "--", 72.7, "A-1", 3.4, "2F", 3, false], ["F0196", "Nguyễn Thị Hiền", "Line 1", "Sewer 1", "G4", 4, "G4-A", 72.7, "A-1", 4.4, "2F", 3, false], ["F0201", "Lâm Ngọc Thuận", "Line 21", "Leader 21", "G5", 5, "G5", 72.7, "A-2", 5.3, "1F", 3, false], ["F0227", "Trần Thị Mỹ Thắng", "Line 3.3", "Sewer 3.3", "G3", 3, "G3-A", 72.6, "A-1", 3.7, "2F", 6, false], ["F0235", "Nguyễn Thị Thu", "Line 3.3", "Sewer 3.3", "G3", 3, "G3-A", 72.5, "A-1", 3.7, "2F", 3, false], ["F0237", "Nguyễn Thị Nữ", "Line 1", "Sewer 1", "G4", 4, "G4-A", 72.5, "A-1", 4.4, "2F", 3, false], ["F0256", "Ngô Thị Kim Huyền", "Line 3.2", "Sewer 3.2", "G4", 4, "G4-A", 72.4, "A-1", 5.9, "2F", 3, false], ["F0261", "Lê Thị Lộc", "Line 3.1", "Sewer 3.1", "G3", 3, "G3-A", 72.3, "A-1", 3.5, "2F", 3, false], ["F0263", "Phạm Thị Kim Dung", "Line 3.2", "Sewer 3.2", "G4", 4, "G4-A", 72.3, "A-1", 5.9, "2F", 3, false], ["F0266", "Đỗ Thị Mỹ Dung", "Line 3.2", "Sewer 3.2", "G4", 4, "G4-A", 72.2, "A-1", 5.9, "2F", 3, false], ["F0271", "Nguyễn Thị Khánh Ân", "Line 3.1", "Leader 3.1", "G5", 5, "G5", 72.2, "A-1", 3.5, "2F", 3, false], ["F0272", "Phạm Thị Lập", "Line 3.1", "Sewer 3.1", "G3", 3, "G3-A", 72.2, "A-1", 3.5, "2F", 3, false], ["F0275", "Nguyễn Thị Kim Nhung", "Line 3.2", "Sewer 3.2", "G4", 4, "G4-A", 72.0, "A-1", 5.9, "2F", 3, false], ["F0279", "Lê Thị Thúy Huệ", "Line 6", "Vice team Leader 6", "G4", 4, "G4-A", 71.8, "A-1", 4.6, "2F", 3, false], ["F0280", "Phạm Thị Ngọc Linh", "Line 4", "Sewer 4", "G2", 2, "G2", 71.8, "A-1", 4.4, "2F", 3, false], ["F0294", "Nguyễn Thị Thu Thủy", "Line 3.4", "Sewer 3.4", "G3", 3, "G3-A", 71.5, "A-1", 3.4, "2F", 3, false], ["F0304", "Lê Văn Hùng", "Cleaner", "Leader Cleaner", "G5", 5, "G5", 70.9, "C", 1.0, "1F", 3, false], ["F0320", "Hoàng Thị Mến", "Line 1", "Sewer 1", "G3", 3, "G3-A", 70.8, "A-1", 4.4, "2F", 3, false], ["F0336", "Trần Thị Thu Thảo", "Supply 3", "Computer", "G3", 3, "G3-A", 70.6, "B", 4.3, "2F", 3, false], ["F0338", "Nguyễn Thị Kim Tiền", "Line 1", "Sewer 1", "G3", 3, "G3-A", 70.6, "A-1", 4.4, "2F", 3, false], ["F0345", "Huỳnh Thị Bé", "Line 3.2", "Sewer 3.2", "G3", 3, "G3-A", 70.6, "A-1", 5.9, "2F", 3, false], ["F0352", "Nguyễn Thị Thanh Xuân", "Line 7", "Sewer 7", "G3", 3, "G3-A", 70.4, "A-1", 3.5, "2F", 3, false], ["F0353", "Lê Thị Lan Phương", "Supply 3", "Computer", "G3", 3, "G3-A", 70.4, "B", 4.3, "2F", 3, false], ["F0367", "Lê Thị Huyền Thoại", "Rivet Dept", "Vice team Rivet", "G4", 4, "G4-A", 70.2, "B", 4.4, "1F", 3, false], ["F0375", "Vũ Khánh Xô", "Warehouse Finishing", "Helper F.G", "G3", 3, "G3-A", 70.2, "E", 6.6, "1F", 3, false], ["F0377", "Cao Thị Nữ", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 70.1, "E", 3.8, "1F", 3, false], ["F0380", "Huỳnh Minh Tâm", "Cutting Dept", "Helper cutting", "G4", 4, "G4-A", 70.0, "D", 4.9, "1F", 3, false], ["F0400", "Phùng Văn Hảo", "Cutting Dept", "Helper cutting", "G3", 3, "G3-A", 67.9, "D", 4.9, "1F", 3, false], ["F0413", "Vi Thị Xuân", "Line 2", "Helper 2", "G3", 3, "G3-A", 67.7, "A-1", 5.7, "2F", 3, false], ["F0422", "Hà Thị Thanh An", "Preparation", "Preparation", "G2", 2, "G2", 66.9, "C", 2.9, "1F", 3, false], ["F0433", "Phạm Mạnh Cường", "Cutting Dept", "Helper cutting", "G4", 4, "G4-A", 66.3, "D", 4.9, "1F", 3, false], ["F0442", "Trần Thị Mỹ", "Line 3.1", "Helper 3.1", "G2", 2, "G2", 66.2, "A-1", 3.5, "2F", 3, false], ["F0443", "Nguyễn Thị Minh Lạc", "Line 7", "Sewer 7", "G3", 3, "G3-A", 66.2, "A-1", 3.5, "2F", 3, false], ["F0448", "Nguyễn Thị Mừng", "QC & Packing Dept", "Viceteam team Packing", "G4", 4, "G4-A", 66.0, "E", 3.8, "1F", 3, false], ["F0451", "Lê Minh Tiến", "Maintenance", "Mechanical", "G5", 5, "G5", 66.0, "F", 10.0, "1F", 3, false], ["F0455", "Nguyễn Đức Cường", "Cutting Dept", "Helper cutting", "G4", 4, "G4-A", 66.0, "D", 4.9, "1F", 3, false], ["F0458", "Trương Thị Mỹ Dung", "L#Part", "Sewer L#Part", "G3", 3, "G3-A", 65.9, "A-2", 3.6, "1F", 3, false], ["F0471", "Dương Thị Ngọc Thanh", "Webbing Cutting", "Webbing Cutting", "G2", 2, "G2", 65.8, "D", 1.7, "1F", 0.0, false], ["F0473", "Phạm Thị Quỳnh Như", "Line 4", "Sewer 4", "G4", 4, "G4-A", 65.7, "A-1", 4.4, "2F", 8, false], ["F0477", "Trần Thị Mỹ Linh", "Line 7", "Leader 7", "G5", 5, "G5", 65.5, "A-1", 3.5, "2F", 3, false], ["F0500", "Phạm Thị Thúy", "Supply 3", "Computer", "G3", 3, "G3-A", 64.8, "B", 4.3, "2F", 3, false], ["F0511", "Phạm Thị Lộc", "Sample Room & I.E", "Sewer I.E", "G4", 4, "G4-A", 64.2, "F", 4.8, "1F", 3, false], ["F0512", "Ngô Thị Trúc Linh", "Line 28", "Sewer 28", "G3", 3, "G3-A", 64.2, "A-2", 4.7, "1F", 3, false], ["F0521", "Trần Thị Dinh", "Line 24", "Sewer 24", "G3", 3, "G3-A", 63.7, "A-2", 4.2, "1F", 3, false], ["F0526", "Thái Thị Xuân", "Line 3.4", "Sewer 3.4", "G3", 3, "G3-A", 63.3, "A-1", 3.4, "2F", 3, false], ["F0531", "Quách Thị Chi", "Line 5", "Sewer 5", "G3", 3, "G3-A", 62.8, "A-1", 4.8, "2F", 3, false], ["F0532", "Đặng Thị Thanh Hương", "Line 1", "Sewer 1", "G3", 3, "G3-A", 62.8, "A-1", 4.4, "2F", 3, false], ["F0533", "Phạm Mai Lệ Huyền", "Line 3.2", "Sewer 3.2", "G3", 3, "G3-A", 62.8, "A-1", 5.9, "2F", 3, false], ["F0534", "Nguyễn Thị Thanh Xuân", "QC & Packing Dept", "Packing", "G2", 2, "G2", 62.7, "E", 3.8, "1F", 3, false], ["F0537", "Trần Thanh Phương", "Rivet Dept", "Rivet", "G3", 3, "G3-A", 62.7, "B", 4.4, "1F", 3, false], ["F0538", "Phùng Thị Thúy Hằng", "Line 7", "Helper 7", "G2", 2, "G2", 62.7, "A-1", 3.5, "2F", 3, false], ["F0539", "Đặng Thị Lành", "Line 3.3", "Vice team Leader 3.3", "G4", 4, "G4-A", 62.6, "A-1", 3.7, "2F", 3, false], ["F0544", "Dao Thị Nữ", "Line 3.3", "Sewer 3.3", "G2", 2, "G2", 62.4, "A-1", 3.7, "2F", 3, false], ["F0547", "Phan Thị Mỹ Dung", "Preparation", "Preparation", "G3", 3, "G3-A", 62.3, "C", 2.9, "1F", 3, false], ["F0548", "Phan Thị Nụ", "Line 28", "Sewer 28", "G4", 4, "G4-A", 62.2, "A-2", 4.7, "1F", 3, false], ["F0550", "Trần Thị Mơ", "Line 3.3", "Helper 3.3", "G2", 2, "G2", 61.2, "A-1", 3.7, "2F", 3, false], ["F0551", "Nguyễn Thị Thu Thủy", "Rivet Dept", "Rivet", "G3", 3, "G3-A", 61.2, "B", 4.4, "1F", 3, false], ["F0555", "Huỳnh Thị Điệp", "Supply 3", "Bartak", "G3", 3, "G3-A", 61.2, "B", 4.3, "2F", 3, false], ["F0562", "Nguyễn Thị Thu Thủy", "QC & Packing Dept", "Leader Packing", "G5", 5, "G5", 61.0, "E", 3.8, "1F", 2, false], ["F0564", "Võ Thị Nhớ", "Line 21", "Sewer 21", "G3", 3, "G3-A", 61.0, "A-2", 5.3, "1F", 3, false], ["F0568", "Nguyễn Thanh Thúy", "Supply 3", "Computer", "G3", 3, "G3-A", 61.0, "B", 4.3, "2F", 3, false], ["F0569", "Trịnh Thị Hồng Chương", "Preparation", "Preparation", "G2", 2, "G2", 61.0, "C", 2.9, "1F", 3, false], ["F0573", "Đặng Thị Diễm Hương", "Line 3.3", "Sewer 3.3", "G3", 3, "G3-A", 61.0, "A-1", 3.7, "2F", 3, false], ["F0578", "Kiều Thị Kim Chi", "QC & Packing Dept", "Leader QC", "G5", 5, "G5", 60.9, "E", 3.8, "1F", 3, false], ["F0609", "Bùi Trường Thắng", "Supply 3", "Bartak", "G3", 3, "G3-A", 60.7, "B", 4.3, "2F", 3, false], ["F0612", "Bùi Thị Thanh Kiều", "Line 28", "Sewer 28", "G3", 3, "G3-A", 60.7, "A-2", 4.7, "1F", 3, false], ["F0613", "Phan Thị Mỹ Duyên", "Line 1", "Sewer 1", "G3", 3, "G3-A", 60.7, "A-1", 4.4, "2F", 3, false], ["F0614", "Lê Thị Hạnh Thảo", "Line 1", "Sewer 1", "G3", 3, "G3-A", 60.7, "A-1", 4.4, "2F", 3, false], ["F0622", "Đoàn Thị Thủy Tiên", "QC & Packing Dept", "IQC", "G3", 3, "G3-A", 60.5, "E", 3.8, "1F", 3, false], ["F0623", "Mạch Thị Điệp", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 60.5, "E", 3.8, "1F", 3, false], ["F0635", "Nguyễn Văn Lượm", "Seam Sling", "Leader Seam sling + Heat press", "G5", 5, "G5", 60.5, "C", 3.7, "1F", 3, false], ["F0638", "Nguyễn Thị Ngọc Lan", "Supply 3", "Computer", "G3", 3, "G3-A", 60.5, "B", 4.3, "2F", 3, false], ["F0639", "Lê Thị Mỹ Sương", "Preparation", "Preparation", "G2", 2, "G2", 60.5, "C", 2.9, "1F", 3, false], ["F0642", "Đinh Thị Phương", "Line 28", "Sewer 28", "G3", 3, "G3-A", 60.4, "A-2", 4.7, "1F", 3, false], ["F0655", "Lưu Ái Lan", "Supply 3", "Computer", "G2", 2, "G2", 60.3, "B", 4.3, "2F", 3, false], ["F0659", "Đào Thị Thanh Thanh", "Line 4", "Sewer 4", "G3", 3, "G3-A", 60.2, "A-1", 4.4, "2F", 3, false], ["F0664", "Lê Thị Luân", "Line 3.1", "Helper 3.1", "G2", 2, "G2", 60.0, "A-1", 3.5, "2F", 3, false], ["F0665", "Phạm Thị Oanh", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 60.0, "E", 3.8, "1F", 0.0, false], ["F0667", "Trương Thị Hồng Phúc", "Supply 3", " Computer", "G3", 3, "G3-A", 60.0, "B", 4.3, "2F", 3, false], ["F0668", "Đinh Văn Dũng", "Line 3.1", "Helper 3.1", "G3", 3, "G3-A", 60.0, "A-1", 3.5, "2F", 3, false], ["F0675", "Lê Thị Bằng", "Line 3.4", "Sewer 3.4", "G2", 2, "G2", 60.0, "A-1", 3.4, "2F", 3, false], ["F0683", "Nguyễn Thị Tuyết", "Line 4", "Sewer 4", "G3", 3, "G3-A", 59.9, "A-1", 4.4, "2F", 3, false], ["F0687", "Phan Thị Ngọc Yến", "Line 27", "Vice team Leader 27", "G4", 4, "G4-A", 59.8, "A-2", 5.6, "1F", 3, false], ["F0690", "Phạm Thị Kiều Diễm Hương", "Line 1", "Vice team Leader 1", "G4", 4, "G4-A", 59.8, "A-1", 4.4, "2F", 3, false], ["F0697", "Lê Thị Kiều Oanh", "Line 28", "Sewer 28", "G3", 3, "G3-A", 59.6, "A-2", 4.7, "1F", 3, false], ["F0702", "Mai Thị Tuyền Nhỏ", "Preparation", "Preparation", "G2", 2, "G2", 59.6, "C", 2.9, "1F", 3, false], ["F0708", "Hồ Thị Hiệp", "Line 28", "Sewer 28", "G4", 4, "G4-A", 59.6, "A-2", 4.7, "1F", 3, false], ["F0709", "Hoa Thị Khánh Linh", "Line 3.4", "Sewer 3.4", "G3", 3, "G3-A", 59.6, "A-1", 3.4, "2F", 3, false], ["F0713", "Nguyễn Thị Hồng Hạnh", "Line 3.4", "Sewer 3.4", "G3", 3, "G3-A", 59.6, "A-1", 3.4, "2F", 3, false], ["F0714", "Phạm Tấn Đạt", "Line 3.3", "Helper 3.3", "G3", 3, "G3-A", 59.6, "A-1", 3.7, "2F", 3, false], ["F0715", "Nguyễn Thị Thảo Linh", "Line 4", "Leader 4", "G5", 5, "G5", 59.6, "A-1", 4.4, "2F", 3, false], ["F0734", "Trần Thị Xuân Trang", "QC & Packing Dept", " QC Supervisor", "--", 0, "--", 59.4, "E", 3.8, "1F", 3, false], ["F0737", "Lê Thị Kiều My", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 59.4, "E", 3.8, "1F", 3, false], ["F0757", "Trần Thị Ngọc Lan", "Preparation", "Preparation", "G3", 3, "G3-A", 59.1, "C", 2.9, "1F", 3, false], ["F0760", "Huỳnh Thị Cẩm Nhị", "Line 3.3", "Sewer 3.3", "G4", 4, "G4-A", 58.9, "A-1", 3.7, "2F", 3, false], ["F0762", "Bùi Thị Thuận", "Line 4", "Sewer 4", "G3", 3, "G3-A", 58.9, "A-1", 4.4, "2F", 3, false], ["F0773", "Nguyễn Thị Bảy", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 58.9, "E", 3.8, "1F", 3, false], ["F0779", "Nguyễn Thị Thuận", "Line 3.4", "Sewer 3.4", "G3", 3, "G3-A", 58.8, "A-1", 3.4, "2F", 3, false], ["F0784", "Nguyễn Thị Thúy Phượng", "Line 3.4", "Helper 3.4", "G2", 2, "G2", 58.7, "A-1", 3.4, "2F", 3, false], ["F0789", "Dương Thị Kèn", "Line 8", "Sewer 8", "G2", 2, "G2", 58.7, "A-1", 3.9, "2F", 3, false], ["F0791", "Phan Thị Thanh Tuyền", "Supply 3", "Leader Bartak", "G5", 5, "G5", 58.7, "B", 4.3, "2F", 2, false], ["F0792", "Nguyễn Thị Lài", "Line 4", "Sewer 4", "G3", 3, "G3-A", 58.7, "A-1", 4.4, "2F", 3, false], ["F0795", "Trần Thị Ngọc Cẩn", "Line 22", "Sewer 22", "G4", 4, "G4-A", 58.7, "A-2", 4.2, "1F", 3, false], ["F0797", "Nguyễn Thụy Quỳnh Trâm", "Line 3.3", "Sewer 3.3", "G3", 3, "G3-A", 58.6, "A-1", 3.7, "2F", 3, false], ["F0798", "Nguyễn Thị Thanh", "Line 3.4", "Sewer 3.4", "G3", 3, "G3-A", 58.6, "A-1", 3.4, "2F", 3, false], ["F0806", "Trần Thị Sang", "Preparation", "Preparation", "G3", 3, "G3-A", 58.6, "C", 2.9, "1F", 3, false], ["F0811", "Đào Thị Lý", "Supply 3", "Computer", "G3", 3, "G3-A", 58.5, "B", 4.3, "2F", 3, false], ["F0818", "Lê Thị Bình Yên", "QC & Packing Dept", "Leader QC", "G5", 5, "G5", 58.4, "E", 3.8, "1F", 3, false], ["F0822", "Trần Thị Phú Thư", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 58.4, "E", 3.8, "1F", 3, false], ["F0834", "Nguyễn Thảo Phương Linh", "Cutting Dept", "Leader Cutting", "G5", 5, "G5", 58.0, "D", 4.9, "1F", 3, false], ["F0836", "Trần Thị Kim Dung", "Line 4", "Sewer 4", "G3", 3, "G3-A", 58.0, "A-1", 4.4, "2F", 3, false], ["F0841", "Thái Thị Mỹ Duyên", "Line 1", "Sewer 1", "G4", 4, "G4-A", 58.0, "A-1", 4.4, "2F", 3, false], ["F0843", "Nguyễn Thị Chín", "Preparation", "Preparation", "G2", 2, "G2", 58.0, "C", 2.9, "1F", 3, false], ["F0856", "Nguyễn Thị Thu Hiền", "Line 3.4", "Sewer 3.4", "G3", 3, "G3-A", 57.8, "A-1", 3.4, "2F", 3, false], ["F0857", "Nguyễn Thị Hằng", "Line 21", "Sewer 21", "G2", 2, "G2", 57.8, "A-2", 5.3, "1F", 3, false], ["F0858", "Nguyễn Thị Thu Thảo", "Line 21", "Sewer 21", "G4", 4, "G4-A", 57.8, "A-2", 5.3, "1F", 3, false], ["F0860", "Đoàn Nữ Thùy Trâm", "Line 21", "Sewer 21", "G4", 4, "G4-A", 57.8, "A-2", 5.3, "1F", 3, false], ["F0861", "Võ Thị Tịnh", "Line 8", "Helper 8", "G2", 2, "G2", 57.7, "A-1", 3.9, "2F", 3, false], ["F0894", "Hà Thị Hương", "Line 3.4", "Sewer 3.4", "G3", 3, "G3-A", 57.3, "A-1", 3.4, "2F", 3, false], ["F0898", "Huỳnh Thị Nhơn", "Line 3.4", "Sewer 3.4", "G3", 3, "G3-A", 57.2, "A-1", 3.4, "2F", 3, false], ["F0907", "Tằng Thị Siêm", "Line 3.4", "Sewer 3.4", "G3", 3, "G3-A", 57.0, "A-1", 3.4, "2F", 3, false], ["F0909", "Bùi Thị Muội", "Line 7", "Sewer 7", "G3", 3, "G3-A", 57.0, "A-1", 3.5, "2F", 3, false], ["F0928", "Lê Thị Hồng Tân", "Line 25", "Sewer 25", "G3", 3, "G3-A", 56.6, "A-2", 3.9, "1F", 3, false], ["F0936", "Nguyễn Thị Kim Chi", "Line 1", "Sewer 1", "G2", 2, "G2", 56.6, "A-1", 4.4, "2F", 3, false], ["F0953", "Nguyễn Quốc Cường", "QC & Packing Dept", "Viceteam team Packing", "G4", 4, "G4-A", 56.5, "E", 3.8, "1F", 3, false], ["F0969", "Đinh Thị Nam Khánh", "Line 28", "Sewer 28", "G3", 3, "G3-A", 53.9, "A-2", 4.7, "1F", 3, false], ["F0976", "Đặng Thị Gia Phượng", "Line 6", "Vice team Leader 6", "G4", 4, "G4-A", 53.8, "A-1", 4.6, "2F", 3, false], ["F0982", "Nguyễn Thị Mai Trinh", "Supply 3", "Bartak", "G3", 3, "G3-A", 53.6, "B", 4.3, "2F", 3, false], ["F0985", "Nguyễn Hà Trúc Giang", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 53.6, "E", 3.8, "1F", 3, false], ["F0987", "Đỗ Quốc Tuấn", "Line 3.2", "Helper 3.2", "G2", 2, "G2", 53.6, "A-1", 5.9, "2F", 3, false], ["F0992", "Nguyễn Thị Thanh Hồng", "Line 24", "Helper 24", "G2", 2, "G2", 53.6, "A-2", 4.2, "1F", 3, false], ["F0997", "Trần Thị Mỹ Nhân", "Line 8", "Leader 8", "G5", 5, "G5", 53.6, "A-1", 3.9, "2F", 3, false], ["F1001", "Lê Xuân Hùng", "Rivet Dept", "Leader Rivet", "G5", 5, "G5", 53.5, "B", 4.4, "1F", 3, false], ["F1009", "Đào Thị Nguyên", "Line 7", "Sewer 7", "G3", 3, "G3-A", 53.4, "A-1", 3.5, "2F", 3, false], ["F1013", "Nguyễn Thị Hoa", "Line 3.4", "Sewer 3.4", "G3", 3, "G3-A", 53.4, "A-1", 3.4, "2F", 3, false], ["F1020", "Vũ Thị Loan", "Line 7", "Sewer 7", "G2", 2, "G2", 53.2, "A-1", 3.5, "2F", 3, false], ["F1022", "Trần Thị Khánh Nhi", "Line 3.1", "Sewer 3.1", "G3", 3, "G3-A", 53.2, "A-1", 3.5, "2F", 3, false], ["F1024", "Nguyễn Thị Tuyến", "Line 4", "Sewer 4", "G3", 3, "G3-A", 53.0, "A-1", 4.4, "2F", 3, false], ["F1027", "Nguyễn Thị Thu Thảo", "Line 3.3", "Sewer 3.3", "G3", 3, "G3-A", 53.0, "A-1", 3.7, "2F", 3, false], ["F1028", "Hồ Thị Kim Oanh", "Line 6", "Sewer 6", "G3", 3, "G3-A", 53.0, "A-1", 4.6, "2F", 3, false], ["F1035", "Phạm Thị Trinh", "Line 27", "Sewer 27", "G3", 3, "G3-A", 53.0, "A-2", 5.6, "1F", 3, false], ["F1044", "Lê Thị Phương Dung", "QC & Packing Dept", "Vice team Leader Packing", "G4", 4, "G4-A", 53.0, "E", 3.8, "1F", 3, false], ["F1051", "Nguyễn Quỳnh Như", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 52.5, "E", 3.8, "1F", 3, false], ["F1074", "Nguyễn Thị Út", "Warehouse", "Helper WH", "G3", 3, "G3-A", 49.5, "C", 4.5, "1F", 3, false], ["F1075", "Nguyễn Thị Lệ Quỳnh", "Warehouse", "Helper WH", "G3", 3, "G3-A", 49.5, "C", 4.5, "1F", 3, false], ["F1076", "Nguyễn Đặng Phước Lộc", "Line 3.1", "Helper 3.1", "G3", 3, "G3-A", 49.5, "A-1", 3.5, "2F", 3, false], ["F1078", "Huỳnh Ngọc Huệ", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 49.4, "E", 3.8, "1F", 3, false], ["F1079", "Đỗ Thị Kim Lan", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 49.4, "E", 3.8, "1F", 3, false], ["F1081", "Nguyễn Thị Trang", "Supply 3", "Computer", "G3", 3, "G3-A", 49.4, "B", 4.3, "2F", 3, false], ["F1082", "Nguyễn Hoàng Hiệp", "Warehouse", "Leader WH", "G5", 5, "G5", 49.4, "C", 4.5, "1F", 3, false], ["F1090", "Nguyễn Thị Bình Long", "Line 21", "Sewer 21", "G3", 3, "G3-A", 49.3, "A-2", 5.3, "1F", 3, false], ["F1092", "Nguyễn Thị Thùy Linh", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 49.3, "E", 3.8, "1F", 3, false], ["F1106", "Nguyễn Thị Thùy Linh", "Line 3.1", "Sewer 3.1", "G3", 3, "G3-A", 49.0, "A-1", 3.5, "2F", 3, false], ["F1113", "Nguyễn Ngọc Hoàng Yến", "Rivet Dept", "Rivet", "G2", 2, "G2", 49.0, "B", 4.4, "1F", 3, false], ["F1114", "Nguyễn Thị Thúy", "Line 24", "Sewer 24", "G3", 3, "G3-A", 49.0, "A-2", 4.2, "1F", 3, false], ["F1121", "Huỳnh Nghi", "Supply 3", "Computer", "G4", 4, "G4-A", 49.0, "B", 4.3, "2F", 3, false], ["F1125", "Đỗ Thị Phương", "Preparation", "Preparation", "G2", 2, "G2", 48.9, "C", 2.9, "1F", 3, false], ["F1126", "Nguyễn Thị Minh", "Line 7", "Sewer 7", "G3", 3, "G3-A", 48.9, "A-1", 3.5, "2F", 3, false], ["F1134", "Nguyễn Thị Thanh", "Line 6", "Sewer 6", "G2", 2, "G2", 48.9, "A-1", 4.6, "2F", 3, false], ["F1143", "Nguyễn Thị Kim Yến", "Supply 3", "Bartak", "G3", 3, "G3-A", 48.8, "B", 4.3, "2F", 3, false], ["F1151", "Lý Thị Thu", "Supply 3", "Bartak", "G3", 3, "G3-A", 48.8, "B", 4.3, "2F", 3, false], ["F1153", "Trần Nguyễn Ái Nhi", "Supply 3", "Vice team Computer", "G4", 4, "G4-A", 48.8, "B", 4.3, "2F", 3, false], ["F1154", "Nguyễn Thị Nga", "Line 4", "Sewer 4", "G3", 3, "G3-A", 48.7, "A-1", 4.4, "2F", 3, false], ["F1158", "Nguyễn Duy Quang", "Line 1", "Sewer 1", "G4", 4, "G4-A", 48.7, "A-1", 4.4, "2F", 3, false], ["F1159", "Hứa Thị Yến Nhi", "Sample Room & I.E", "Staff diagram lectra (nhân viên sơ đồ lectra)", "G4", 4, "G4-A", 48.6, "F", 4.8, "1F", 3, false], ["F1163", "Phạm Văn Lập", "Line 4", "Sewer 4", "G4", 4, "G4-A", 48.5, "A-1", 4.4, "2F", 3, false], ["F1165", "Nguyễn Thị Ngọc Thu", "Preparation", "Preparation", "G2", 2, "G2", 48.5, "C", 2.9, "1F", 3, false], ["F1167", "Trương Thị Bích Lan", "Line 6", "Sewer 6", "G3", 3, "G3-A", 48.5, "A-1", 4.6, "2F", 3, false], ["F1172", "Nguyễn Thị Son", "Line 21", "Sewer 21", "G2", 2, "G2", 48.5, "A-2", 5.3, "1F", 0.0, false], ["F1173", "Nguyễn Thị Thùy Linh", "Line 3.3", "Sewer 3.3", "G3", 3, "G3-A", 48.5, "A-1", 3.7, "2F", 3, false], ["F1174", "Nguyễn Thị Minh Phương", "Line 21", "Sewer 21", "G3", 3, "G3-A", 48.5, "A-2", 5.3, "1F", 3, false], ["F1175", "Lê Thị Ngọc ", "Preparation", "Preparation", "G2", 2, "G2", 48.5, "C", 2.9, "1F", 3, false], ["F1184", "Võ Nguyệt Phi", "Preparation", "Preparation", "G2", 2, "G2", 48.4, "C", 2.9, "1F", 3, false], ["F1186", "Nguyễn Thị Thùy Duyên", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 48.3, "E", 3.8, "1F", 3, false], ["F1189", "Nguyễn Thị Kim Thoa", "Line 21", "Sewer 21", "G3", 3, "G3-A", 48.3, "A-2", 5.3, "1F", 3, false], ["F1193", "Trần Thị Mỹ Hân", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 48.3, "E", 3.8, "1F", 3, false], ["F1194", "Đặng Ngọc Yến", "Line 21", "Vice team Leader 21", "G4", 4, "G4-A", 48.3, "A-2", 5.3, "1F", 3, false], ["F1198", "Lê Thị Hồng Kiều", "Line 28", "Sewer 28", "G4", 4, "G4-A", 48.1, "A-2", 4.7, "1F", 3, false], ["F1203", "Nguyễn Thị Thảo Nguyên", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 48.0, "E", 3.8, "1F", 3, false], ["F1227", "Lê Thị Kim Nhung", "Preparation", "Preparation", "G2", 2, "G2", 47.6, "C", 2.9, "1F", 3, false], ["F1228", "Hoàng Thị Thanh Hòa", "Preparation", "Preparation", "G2", 2, "G2", 47.6, "C", 2.9, "1F", 3, false], ["F1231", "Nguyễn Thị Thúy", "Line 21", "Sewer 21", "G4", 4, "G4-A", 47.6, "A-2", 5.3, "1F", 3, false], ["F1239", "Hoàng Thị Quỳnh Hương", "Line 22", "Sewer 22", "G3", 3, "G3-A", 47.4, "A-2", 4.2, "1F", 3, false], ["F1240", "Lê Thị Ngọc Trúc", "Line 24", "Sewer 24", "G3", 3, "G3-A", 47.4, "A-2", 4.2, "1F", 3, false], ["F1244", "Nguyễn Thị Kim Anh", "Line 24", "Sewer 24", "G3", 3, "G3-A", 47.4, "A-2", 4.2, "1F", 3, false], ["F1245", "Hồ Quốc Toản", "Preparation", "Preparation", "G3", 3, "G3-A", 47.4, "C", 2.9, "1F", 3, false], ["F1248", "Phạm Thị Kim Hằng", "Line 28", "Sewer 28", "G3", 3, "G3-A", 47.4, "A-2", 4.7, "1F", 3, false], ["F1251", "Trần Thị Châu", "Preparation", "Preparation", "G2", 2, "G2", 47.4, "C", 2.9, "1F", 3, false], ["F1252", "Trịnh Hà My", "Line 24", "Sewer 24", "G3", 3, "G3-A", 47.4, "A-2", 4.2, "1F", 3, false], ["F1254", "Nguyễn Thị Yến", "Line 24", "Sewer 24", "G3", 3, "G3-A", 47.3, "A-2", 4.2, "1F", 3, false], ["F1256", "Nguyễn Thị Hải Anh", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 47.3, "E", 3.8, "1F", 3, false], ["F1259", "Ngô Thị Kim Quyên", "QC & Packing Dept", "Leader QC", "G5", 5, "G5", 47.3, "E", 3.8, "1F", 3, false], ["F1271", "Trần Thị Thủy", "Line 4", "Helper 4", "G2", 2, "G2", 47.1, "A-1", 4.4, "2F", 3, false], ["F1284", "Lê Thị Kim Loan", "Line 1", "Sewer 1", "G3", 3, "G3-A", 46.9, "A-1", 4.4, "2F", 3, false], ["F1286", "Lê Thị Trà My", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 46.9, "E", 3.8, "1F", 3, false], ["F1289", "Hồ Hữu Trí", "Line 7", "Sewer 7", "G3", 3, "G3-A", 46.8, "A-1", 3.5, "2F", 3, false], ["F1290", "Võ Thị Kim Ngọc", "Supply 3", "Bartak", "G3", 3, "G3-A", 46.8, "B", 4.3, "2F", 3, false], ["F1292", "Hồ Sỹ Quốc Bảo", "Laser", "Laser", "G3", 3, "G3-A", 46.8, "D", 3.6, "1F", 3, false], ["F1297", "Trương Phương Du", "Line 22", "Leader 22", "G5", 5, "G5", 46.7, "A-2", 4.2, "1F", 3, false], ["F1299", "Phan Thị Kim Ái", "Line 8", "Sewer 8", "G3", 3, "G3-A", 46.7, "A-1", 3.9, "2F", 3, false], ["F1300", "Lê Thị Dung", "QC & Packing Dept", "Packing", "G2", 2, "G2", 46.7, "E", 3.8, "1F", 3, false], ["F1306", "Nguyễn Thị Thái Uyên", "Line 22", "Sewer 22", "G3", 3, "G3-A", 46.7, "A-2", 4.2, "1F", 3, false], ["F1308", "Nguyễn Thị Hường", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 46.7, "E", 3.8, "1F", 3, false], ["F1319", "Đặng Thị Mai", "Line 24", "Sewer 24", "G2", 2, "G2", 46.6, "A-2", 4.2, "1F", 3, false], ["F1322", "Phạm Thị Anh Đào", "Line 22", "Vice team Leader 22", "G4", 4, "G4-A", 46.6, "A-2", 4.2, "1F", 3, false], ["F1324", "Ngô Thị Trinh", "Supply 3", "Computer", "G3", 3, "G3-A", 46.6, "B", 4.3, "2F", 3, false], ["F1338", "Vũ Đình Tuần", "Line 2", "Helper 2", "G3", 3, "G3-A", 46.5, "A-1", 5.7, "2F", 3, false], ["F1345", "Huỳnh Thị Nguyệt", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 46.5, "E", 3.8, "1F", 3, false], ["F1354", "Hoàng Thị Nhung", "Line 1", "Sewer 1", "G2", 2, "G2", 46.4, "A-1", 4.4, "2F", 0.0, false], ["F1387", "Huỳnh Thị Gái", "Line 4", "Helper 4", "G2", 2, "G2", 46.2, "A-1", 4.4, "2F", 3, false], ["F1390", "Nguyễn Thị Hồng Xuân", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 46.2, "E", 3.8, "1F", 3, false], ["F1400", "Hồ Thị Kim Hường", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 46.0, "E", 3.8, "1F", 3, false], ["F1404", "Nguyễn Thị Kim Trâm", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 46.0, "E", 3.8, "1F", 3, false], ["F1405", "Trương Thị Hồi", "QC & Packing Dept", "Packing", "G2", 2, "G2", 46.0, "E", 3.8, "1F", 1, false], ["F1410", "Nguyễn Thị Đại", "Line 21", "Sewer 21", "G3", 3, "G3-A", 46.0, "A-2", 5.3, "1F", 3, false], ["F1413", "Vi Thị Năm", "Line 1", "Sewer 1", "G3", 3, "G3-A", 46.0, "A-1", 4.4, "2F", 5, false], ["F1414", "Dương Thị Mong", "Line 1", "Sewer 1", "G4", 4, "G4-A", 46.0, "A-1", 4.4, "2F", 3, false], ["F1415", "Lăng Thị Tuyết", "Line 1", "Sewer 1", "G3", 3, "G3-A", 46.0, "A-1", 4.4, "2F", 3, false], ["F1416", "Nông Thị Diên", "Line 3.4", "Sewer 3.4", "G3", 3, "G3-A", 46.0, "A-1", 3.4, "2F", 3, false], ["F1417", "Lăng Thị Chí", "Line 25", "Helper 25", "G2", 2, "G2", 46.0, "A-2", 3.9, "1F", 2, false], ["F1419", "Vi Minh Vương", "Supply 3", " Computer", "G3", 3, "G3-A", 46.0, "B", 4.3, "2F", 3, false], ["F1421", "Vi Văn Khánh", "Supply 3", "Bartak", "G4", 4, "G4-A", 46.0, "B", 4.3, "2F", 3, false], ["F1424", "Vi Thị Đỏ", "Preparation", "Preparation", "G2", 2, "G2", 46.0, "C", 2.9, "1F", 3, false], ["F1426", "Hà Thị Theo", "Preparation", "Preparation", "G3", 3, "G3-A", 46.0, "C", 2.9, "1F", 3, false], ["F1430", "Trần Minh Đức", "Rivet Dept", "Rivet", "G3", 3, "G3-A", 46.0, "B", 4.4, "1F", 3, false], ["F1431", "Phạm Thị Xuân", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 46.0, "E", 3.8, "1F", 3, false], ["F1433", "Nguyễn Thành Châu", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 46.0, "E", 3.8, "1F", 3, false], ["F1438", "Lâm Thị Lành", "Line 3.3", "Sewer 3.3", "G2", 2, "G2", 46.0, "A-1", 3.7, "2F", 2, false], ["F1439", "Lâm Thị Dần", "Line 3.2", "Sewer 3.2", "G2", 2, "G2", 46.0, "A-1", 5.9, "2F", 2, false], ["F1441", "Hoàng Thị Chung", "Line 22", "Sewer 22", "G3", 3, "G3-A", 46.0, "A-2", 4.2, "1F", 3, false], ["F1446", "Lương Thị Xuân", "L#Part", "Sewer L#Part", "G3", 3, "G3-A", 45.9, "A-2", 3.6, "1F", 3, false], ["F1449", "Lâm Thị Nỏn", "Line 24", "Sewer 24", "G3", 3, "G3-A", 45.9, "A-2", 4.2, "1F", 3, false], ["F1450", "Nông Thị Hà", "Line 26", "Sewer 26", "G3", 3, "G3-A", 45.9, "A-2", 4.3, "1F", 3, false], ["F1461", "Lộc Thị Hương", "Line 4", "Sewer 4", "G2", 2, "G2", 45.8, "A-1", 4.4, "2F", 3, false], ["F1464", "Lâm Thị Thu", "Line 4", "Sewer 4", "G3", 3, "G3-A", 45.8, "A-1", 4.4, "2F", 3, false], ["F1467", "Lăng Thị Nồm", "Line 21", "Sewer 21", "G4", 4, "G4-A", 45.8, "A-2", 5.3, "1F", 3, false], ["F1470", "Hoàng Thị Minh Trang", "Line 8", "Sewer 8", "G2", 2, "G2", 45.8, "A-1", 3.9, "2F", 3, false], ["F1474", "Lộc Thị Phương", "Line 25", "Sewer 25", "G3", 3, "G3-A", 45.8, "A-2", 3.9, "1F", 3, false], ["F1483", "Vi Thị Đò", "Line 1", "Sewer 1", "G3", 3, "G3-A", 45.8, "A-1", 4.4, "2F", 3, false], ["F1484", "Chu Thị Dinh", "Line 4", "Helper 4", "G2", 2, "G2", 45.8, "A-1", 4.4, "2F", 3, false], ["F1494", "Lê Thị Tuyết Trang", "Line 5", "Sewer 5", "G4", 4, "G4-A", 45.7, "A-1", 4.8, "2F", 3, false], ["F1496", "Đỗ Ánh Loan", "Line 21", "Sewer 21", "G3", 3, "G3-A", 45.7, "A-2", 5.3, "1F", 3, false], ["F1498", "Lăng Thị Động", "Preparation", "Preparation", "G2", 2, "G2", 45.7, "C", 2.9, "1F", 3, false], ["F1500", "Ngô Anh Tiến", "Warehouse Finishing", "Vice team F.G", "G5", 5, "G5", 45.7, "E", 6.6, "1F", 3, false], ["F1503", "Phan Thị Thu Tuyết", "Preparation", "Preparation", "G2", 2, "G2", 45.7, "C", 2.9, "1F", 3, false], ["F1504", "Lê Thị Phương Thảo", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 45.7, "E", 3.8, "1F", 3, false], ["F1505", "Nguyễn Thị Cẩm Nhung", "Line 21", "Sewer 21", "G3", 3, "G3-A", 45.7, "A-2", 5.3, "1F", 3, false], ["F1513", "Hoàng Thị Khôn", "Line 21", "Sewer 21", "G3", 3, "G3-A", 45.6, "A-2", 5.3, "1F", 3, false], ["F1514", "Vi Thị Hằng", "Line 5", "Sewer 5", "G2", 2, "G2", 45.6, "A-1", 4.8, "2F", 3, false], ["F1524", "Hà Thị Bưởm", "Line 26", "Helper 26", "G2", 2, "G2", 45.6, "A-2", 4.3, "1F", 3, false], ["F1529", "Hoàng Thị Bích Du", "Line 5", "Sewer 5", "G3", 3, "G3-A", 45.6, "A-1", 4.8, "2F", 3, false], ["F1531", "Hoàng Thị Phiên", "Line 8", "Sewer 8", "G3", 3, "G3-A", 45.6, "A-1", 3.9, "2F", 3, false], ["F1542", "Trần Thị Thủy", "Line 22", "Helper 22", "G3", 3, "G3-A", 45.6, "A-2", 4.2, "1F", 3, false], ["F1543", "Chu Thị Khôn", "Line 5", "Sewer 5", "G2", 2, "G2", 45.6, "A-1", 4.8, "2F", 3, false], ["F1549", "Nguyễn Văn Thích", "Line 5", "Sewer 5", "G4", 4, "G4-A", 45.6, "A-1", 4.8, "2F", 3, false], ["F1552", "Lê Thị Thùy Trang", "Line 5", "Sewer 5", "G3", 3, "G3-A", 45.6, "A-1", 4.8, "2F", 3, false], ["F1562", "Vi Thị Phương", "Line 5", "Helper 5", "G2", 2, "G2", 45.5, "A-1", 4.8, "2F", 3, false], ["F1564", "Trần Thị Bích Thủy", "Line 6", "Sewer 6", "G2", 2, "G2", 45.5, "A-1", 4.6, "2F", 3, false], ["F1566", "Hoàng Thị Phương", "Line 21", "Sewer 21", "G3", 3, "G3-A", 45.5, "A-2", 5.3, "1F", 3, false], ["F1579", "Nông Thị Phánh", "Line 5", "Helper 5", "G2", 2, "G2", 45.5, "A-1", 4.8, "2F", 3, false], ["F1584", "Hoàng Thị Viện", "Line 3.1", "Sewer 3.1", "G3", 3, "G3-A", 45.5, "A-1", 3.5, "2F", 3, false], ["F1585", "Phan Thị Thảo", "Line 5", "Sewer 5", "G3", 3, "G3-A", 45.5, "A-1", 4.8, "2F", 3, false], ["F1586", "Vi Thị Mười", "Preparation", "Preparation", "G2", 2, "G2", 45.5, "C", 2.9, "1F", 3, false], ["F1587", "Lê Thị Truyên", "Line 5", "Sewer 5", "G4", 4, "G4-A", 45.5, "A-1", 4.8, "2F", 3, false], ["F1589", "Vũ Thị Thúy Liễu", "Line 3.3", "Sewer 3.3", "G2", 2, "G2", 45.5, "A-1", 3.7, "2F", 3, false], ["F1594", "Trần Đình Gia Thuận", "Warehouse", "Helper WH", "G4", 4, "G4-A", 45.4, "C", 4.5, "1F", 3, false], ["F1596", "Lê Xuân Cường", "Supply 3", "Computer", "G3", 3, "G3-A", 45.4, "B", 4.3, "2F", 3, false], ["F1601", "Vi Thị Nhung", "Line 21", "Sewer 21", "G3", 3, "G3-A", 45.4, "A-2", 5.3, "1F", 3, false], ["F1603", "Vi Hồng Thủy", "Line 25", "Sewer 25", "G3", 3, "G3-A", 45.4, "A-2", 3.9, "1F", 3, false], ["F1607", "Hoàng Thị Hành", "Line 5", "Sewer 5", "G2", 2, "G2", 45.4, "A-1", 4.8, "2F", 2, false], ["F1611", "Nông Thị Châm", "Line 5", "Sewer 5", "G3", 3, "G3-A", 45.3, "A-1", 4.8, "2F", 3, false], ["F1612", "Vi Thị Trường", "Line 5", "Sewer 5", "G4", 4, "G4-A", 45.3, "A-1", 4.8, "2F", 3, false], ["F1615", "Tô Khánh Quỳnh", "Line 6", "Sewer 6", "G2", 2, "G2", 45.3, "A-1", 4.6, "2F", 3, false], ["F1620", "Đào Thị Kim Tuyến", "Line 6", "Sewer 6", "G2", 2, "G2", 45.3, "A-1", 4.6, "2F", 3, false], ["F1623", "Nguyễn Thị Thạch Hà", "Line 22", "Sewer 22", "G3", 3, "G3-A", 45.3, "A-2", 4.2, "1F", 3, false], ["F1631", "Vi Thị Ním", "Preparation", "Preparation", "G2", 2, "G2", 45.2, "C", 2.9, "1F", 3, false], ["F1632", "Nguyễn Thị Lan", "Line 21", "Helper 21", "G3", 3, "G3-A", 45.2, "A-2", 5.3, "1F", 3, false], ["F1645", "Ngô Minh Nguyệt", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 45.1, "E", 3.8, "1F", 3, false], ["F1649", "Nguyễn Thị Vân", "Line 2", "Vice team Leader 2", "G4", 4, "G4-A", 45.1, "A-1", 5.7, "2F", 3, false], ["F1650", "Phạm Thị Kim Phụng", "Line 8", "Sewer 8", "G2", 2, "G2", 45.1, "A-1", 3.9, "2F", 1, false], ["F1653", "Huỳnh Thị Ngọc Hiền", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 45.1, "E", 3.8, "1F", 3, false], ["F1654", "Trần Thị Sương", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 45.1, "E", 3.8, "1F", 3, false], ["F1659", "Hoàng Thị Bé", "Line 24", "Sewer 24", "G3", 3, "G3-A", 45.1, "A-2", 4.2, "1F", 3, false], ["F1660", "Phan Thị Lan", "Line 25", "Sewer 25", "G3", 3, "G3-A", 45.1, "A-2", 3.9, "1F", 3, false], ["F1662", "Vi Thị Hiên", "Line 26", "Sewer 26", "G2", 2, "G2", 45.1, "A-2", 4.3, "1F", 3, false], ["F1663", "Hoàng Thị Khế", "Supply 3", "Bartak", "G3", 3, "G3-A", 45.1, "B", 4.3, "2F", 3, false], ["F1664", "Vi Thị Thanh", "Preparation", "Preparation", "G2", 2, "G2", 45.1, "C", 2.9, "1F", 3, false], ["F1669", "Ma Văn Tường", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 45.1, "E", 3.8, "1F", 3, false], ["F1671", "Hoàng Văn Sáng", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 45.1, "E", 3.8, "1F", 3, false], ["F1674", "Mai Thị Thanh", "QC & Packing Dept", "Packing", "G4", 4, "G4-A", 45.1, "E", 3.8, "1F", 3, false], ["F1677", "Nguyễn Thị Vấn", "Supply 3", "Bartak", "G2", 2, "G2", 45.1, "B", 4.3, "2F", 3, false], ["F1690", "Lê Thị Yến Linh", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 45.0, "E", 3.8, "1F", 3, false], ["F1691", "Huỳnh Thị Mai Xuân", "Line 25", "Sewer 25", "G4", 4, "G4-A", 45.0, "A-2", 3.9, "1F", 3, false], ["F1693", "Trần Thị Hoa", "QC & Packing Dept", "Packing", "G2", 2, "G2", 45.0, "E", 3.8, "1F", 3, false], ["F1695", "Vi Thị Yên", "Supply 3", "Computer", "G3", 3, "G3-A", 44.9, "B", 4.3, "2F", 3, false], ["F1697", "Trần Thị Ánh Tuyết", "Supply 3", "Bartak", "G3", 3, "G3-A", 44.9, "B", 4.3, "2F", 3, false], ["F1698", "Hoàng Thị Ngọc Hà", "Line 28", "Sewer 28", "G3", 3, "G3-A", 44.9, "A-2", 4.7, "1F", 3, false], ["F1701", "Võ Thị Mỹ Lan", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 44.9, "E", 3.8, "1F", 3, false], ["F1706", "Vi Thị Thìn", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.9, "A-1", 4.6, "2F", 3, false], ["F1708", "Hoàng Thị Thùy Vân", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.9, "A-1", 4.6, "2F", 3, false], ["F1709", "Nông Thị Đội", "Line 6", "Sewer 6", "G4", 4, "G4-A", 44.9, "A-1", 4.6, "2F", 3, false], ["F1710", "Vi Thị Biết", "Line 6", "Sewer 6", "G4", 4, "G4-A", 44.9, "A-1", 4.6, "2F", 3, false], ["F1711", "Lộc Thị Phượng", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.9, "A-1", 4.6, "2F", 3, false], ["F1712", "Võ Thị Bé", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.9, "A-1", 4.6, "2F", 0.0, false], ["F1713", "Cao Thị Thanh Thủy", "Preparation", "Preparation", "G3", 3, "G3-A", 44.9, "C", 2.9, "1F", 3, false], ["F1715", "Trần Tuấn Vũ", "Warehouse", "Helper WH", "G3", 3, "G3-A", 44.8, "C", 4.5, "1F", 3, false], ["F1717", "Nguyễn Thị Tiên", "Line 6", "Helper 6", "G3", 3, "G3-A", 44.8, "A-1", 4.6, "2F", 3, false], ["F1719", "Trần Thị Thúy", "Preparation", "Preparation", "G3", 3, "G3-A", 44.8, "C", 2.9, "1F", 3, false], ["F1721", "Dương Thị Loan", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.8, "A-1", 4.6, "2F", 3, false], ["F1727", "Phạm Thị Thúy Vi", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 44.8, "E", 3.8, "1F", 3, false], ["F1729", "Vi Thị Hương", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.8, "A-1", 4.6, "2F", 3, false], ["F1736", "Nguyễn Thị Kim Phụng", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.8, "A-1", 4.6, "2F", 3, false], ["F1749", "Trần Tiến Nhân", "Line 4", "Helper 4", "G3", 3, "G3-A", 44.6, "A-1", 4.4, "2F", 3, false], ["F1764", "Vi Thị Hồng", "Line 26", "Sewer 26", "G3", 3, "G3-A", 44.6, "A-2", 4.3, "1F", 3, false], ["F1765", "Phùng Thị Siêu", "L#Part", "Sewer L#Part", "G3", 3, "G3-A", 44.6, "A-2", 3.6, "1F", 3, false], ["F1766", "Vi Ngọc Trinh", "Line 24", "Sewer 24", "G3", 3, "G3-A", 44.6, "A-2", 4.2, "1F", 3, false], ["F1768", "Phạm Thị Tuyết", "Line 5", "Sewer 5", "G2", 2, "G2", 44.6, "A-1", 4.8, "2F", 3, false], ["F1770", "Lê Thị Ngọc Lan", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 44.6, "E", 3.8, "1F", 1, false], ["F1771", "Ngô Thị Hương", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.5, "A-1", 4.6, "2F", 3, false], ["F1780", "Nguyễn Tấn Lộc", "Maintenance", "Mechanical", "G5", 5, "G5", 44.4, "F", 10.0, "1F", 3, false], ["F1783", "Nguyễn Hữu Chiến", "Line 6", "Sewer 6", "G4", 4, "G4-A", 44.4, "A-1", 4.6, "2F", 3, false], ["F1786", "Huỳnh Thị Kim Lập", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.4, "A-1", 4.6, "2F", 3, false], ["F1787", "Vi Thị Vắn", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.4, "A-1", 4.6, "2F", 3, false], ["F1788", "Vi Thị Bé", "Line 3.1", "Sewer 3.1", "G2", 2, "G2", 44.4, "A-1", 3.5, "2F", 3, false], ["F1789", "Vi Thị Trường", "Line 8", "Helper 8", "G2", 2, "G2", 44.4, "A-1", 3.9, "2F", 3, false], ["F1790", "Vi Thị Mon", "Line 6", "Sewer 6", "G2", 2, "G2", 44.4, "A-1", 4.6, "2F", 3, false], ["F1796", "Hoàng Thị Pèn", "Line 6", "Sewer 6", "G4", 4, "G4-A", 44.4, "A-1", 4.6, "2F", 3, false], ["F1797", "Nguyễn Thị Thanh Loan", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.4, "A-1", 4.6, "2F", 3, false], ["F1798", "Võ Thị Minh Hiền", "Line 8", "Helper 8", "G2", 2, "G2", 44.4, "A-1", 3.9, "2F", 3, false], ["F1799", "Hoàng Thu Hiền", "Line 6", "Sewer 6", "G2", 2, "G2", 44.4, "A-1", 4.6, "2F", 3, false], ["F1801", "Hoàng Thị Lan", "Line 6", "Helper 6", "G2", 2, "G2", 44.4, "A-1", 4.6, "2F", 3, false], ["F1802", "Nguyễn Thị Lệ Thảo", "PRT+EMB", "Leader PRT+EMB", "--", 0, "--", 44.4, "D", 4.5, "1F", 3, false], ["F1823", "Hoàng Thị Nhi", "QC & Packing Dept", "Packing", "G2", 2, "G2", 44.2, "E", 3.8, "1F", 3, false], ["F1826", "Vi Thị Điêu", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 44.2, "E", 3.8, "1F", 3, false], ["F1827", "Nguyễn Thị Thùy Vân", "Line 6", "Sewer 6", "G4", 4, "G4-A", 44.2, "A-1", 4.6, "2F", 3, false], ["F1831", "Vi Thị Hằng", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.2, "A-1", 4.6, "2F", 3, false], ["F1832", "Trần Thị Ánh", "Line 3.1", "Sewer 3.1", "G2", 2, "G2", 44.2, "A-1", 3.5, "2F", 3, false], ["F1835", "Vi Thị Dinh", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.2, "A-1", 4.6, "2F", 3, false], ["F1836", "Hồ Thị Ngọc Thắm ", "Line 2", "Leader 2", "G5", 5, "G5", 44.2, "A-1", 5.7, "2F", 3, false], ["F1837", "Lê Năng Tuấn", "Supply 3", "Bartak", "G3", 3, "G3-A", 44.2, "B", 4.3, "2F", 3, false], ["F1839", "Tô Thị Lèn", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.2, "A-1", 4.6, "2F", 3, false], ["F1841", "Lê Thị Hồng Hoa", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.2, "A-1", 4.6, "2F", 3, false], ["F1843", "Nông Thị Én", "Line 8", "Helper 8", "G2", 2, "G2", 44.0, "A-1", 3.9, "2F", 3, false], ["F1844", "Vi Thị Nhụm", "Preparation", "Preparation", "G2", 2, "G2", 44.0, "C", 2.9, "1F", 3, false], ["F1845", "Lâm Thị Thăng", "Line 8", "Sewer 8", "G3", 3, "G3-A", 44.0, "A-1", 3.9, "2F", 3, false], ["F1846", "Lê Tố Trinh", "Line 8", "Sewer 8", "G3", 3, "G3-A", 44.0, "A-1", 3.9, "2F", 3, false], ["F1854", "Lương Thị Bốn", "Line 8", "Sewer 8", "G4", 4, "G4-A", 44.0, "A-1", 3.9, "2F", 3, false], ["F1857", "Lăng Thị Quân", "Line 8", "Sewer 8", "G3", 3, "G3-A", 44.0, "A-1", 3.9, "2F", 3, false], ["F1861", "Hoàng Thị Bích Phương", "Supply 3", "Computer", "G3", 3, "G3-A", 44.0, "B", 4.3, "2F", 3, false], ["F1862", "Hoàng Thị Dẻo", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.0, "A-1", 4.6, "2F", 3, false], ["F1864", "Hoàng Thị Thủy", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.0, "A-1", 4.6, "2F", 3, false], ["F1868", "Vi Văn Đức", "Supply 3", "Computer", "G3", 3, "G3-A", 44.0, "B", 4.3, "2F", 3, false], ["F1870", "Nguyễn Thị Xuyến", "Line 24", "Vice team Leader 24", "G4", 4, "G4-A", 44.0, "A-2", 4.2, "1F", 3, false], ["F1871", "Hoàng Thị Chanh", "Supply 3", "Bartak", "G3", 3, "G3-A", 44.0, "B", 4.3, "2F", 3, false], ["F1872", "Vi Thị Phương Bảo", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.0, "A-1", 4.6, "2F", 3, false], ["F1876", "Đỗ Thị Chúc Sinh", "Line 6", "Sewer 6", "G3", 3, "G3-A", 44.0, "A-1", 4.6, "2F", 3, false], ["F1879", "Vi Thị Quân", "Line 8", "Sewer 8", "G3", 3, "G3-A", 44.0, "A-1", 3.9, "2F", 3, false], ["F1886", "Trần Quang Dũng", "QC & Packing Dept", "Vice team Leader Packing", "G4", 4, "G4-A", 44.0, "E", 3.8, "1F", 3, false], ["F1889", "Ngô Thị Tiếp", "QC & Packing Dept", "Packing", "G2", 2, "G2", 44.0, "E", 3.8, "1F", 3, false], ["F1902", "Nguyễn Thị Thùy Hoa", "Line 6", "Sewer 6", "G3", 3, "G3-A", 43.9, "A-1", 4.6, "2F", 3, false], ["F1908", "Trần Thị Kim Tuyến", "Line 6", "Sewer 6", "G3", 3, "G3-A", 43.9, "A-1", 4.6, "2F", 3, false], ["F1909", "Vy Thị Hương", "Line 8", "Sewer 8", "G2", 2, "G2", 43.9, "A-1", 3.9, "2F", 3, false], ["F1910", "Hoàng Thị Năm", "Line 8", "Sewer 8", "G3", 3, "G3-A", 43.9, "A-1", 3.9, "2F", 3, false], ["F1916", "Trịnh Thị Phương Uyên", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 43.8, "E", 3.8, "1F", 3, false], ["F1921", "Vi Văn Chung", "L#Part", "Study sewing L#Part", "G3", 3, "G3-A", 43.8, "A-2", 3.6, "1F", 3, false], ["F1925", "Vi Thị Nguyệt", "Line 8", "Vice team Leader 8", "G4", 4, "G4-A", 43.8, "A-1", 3.9, "2F", 3, false], ["F1930", "Trần Hải Quang", "Line 6", "Sewer 6", "G4", 4, "G4-A", 43.8, "A-1", 4.6, "2F", 3, false], ["F1932", "Nguyễn Thị Thúy", "Line 8", "Sewer 8", "G4", 4, "G4-A", 43.8, "A-1", 3.9, "2F", 3, false], ["F1934", "Lộc Thị Hạnh", "Preparation", "Preparation", "G2", 2, "G2", 43.7, "C", 2.9, "1F", 3, false], ["F1941", "Nguyễn Đức Khang", "Webbing Cutting", "Webbing Cutting", "G2", 2, "G2", 43.7, "D", 1.7, "1F", 3, false], ["F1944", "Mai Hữu Thọ", "Warehouse", "Leader WH", "G5", 5, "G5", 43.7, "C", 4.5, "1F", 3, false], ["F1946", "Lê Thị Thu Vân", "Warehouse", "Helper WH", "G3", 3, "G3-A", 43.6, "C", 4.5, "1F", 3, false], ["F1949", "Mã Văn Nghị", "Line 8", "Helper 8", "G3", 3, "G3-A", 43.5, "A-1", 3.9, "2F", 3, false], ["F1951", "Tăng Tú Nhi", "Line 8", "Sewer 8", "G3", 3, "G3-A", 43.5, "A-1", 3.9, "2F", 3, false], ["F1952", "Nguyễn Mộng Thu", "Line 3.1", "Sewer 3.1", "G3", 3, "G3-A", 43.5, "A-1", 3.5, "2F", 3, false], ["F1955", "Hồ Thanh Ly", "Line 24", "Sewer 24", "G3", 3, "G3-A", 43.5, "A-2", 4.2, "1F", 3, false], ["F1956", "Tô Văn Khải", "Line 3.1", "Sewer 3.1", "G3", 3, "G3-A", 43.5, "A-1", 3.5, "2F", 3, false], ["F1959", "Chu Thị Lân", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 43.5, "E", 3.8, "1F", 3, false], ["F1964", "Trương Thị Thu Hà", "Line 6", "Sewer 6", "G3", 3, "G3-A", 43.5, "A-1", 4.6, "2F", 3, false], ["F1976", "Nguyễn Thị Vân", "Line 8", "Sewer 8", "G2", 2, "G2", 43.5, "A-1", 3.9, "2F", 3, false], ["F1983", "Nguyễn Văn Cung", "Line 6", "Sewer 6", "G3", 3, "G3-A", 43.5, "A-1", 4.6, "2F", 3, false], ["F1988", "Vi Thị Thắm", "Line 5", "Helper 5", "G2", 2, "G2", 43.3, "A-1", 4.8, "2F", 3, false], ["F2019", "Nguyễn Thị Kim Hường", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 43.2, "E", 3.8, "1F", 3, false], ["F2024", "Phạm Thị Hương Nhài", "Line 3.2", "Sewer 3.2", "G2", 2, "G2", 43.2, "A-1", 5.9, "2F", 0.0, false], ["F2030", "Nguyễn Thị Liên", "Line 6", "Sewer 6", "G4", 4, "G4-A", 42.8, "A-1", 4.6, "2F", 3, false], ["F2032", "Trần Thị Tuyết", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 42.8, "E", 3.8, "1F", 3, false], ["F2049", "Hồ Thị Hai", "Line 8", "Sewer 8", "G2", 2, "G2", 42.8, "A-1", 3.9, "2F", 3, false], ["F2051", "Trần Thị Bích Ngọc", "Preparation", "Preparation", "G2", 2, "G2", 42.8, "C", 2.9, "1F", 3, false], ["F2059", "Lý Thị Hồng Linh", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 42.6, "E", 3.8, "1F", 3, false], ["F2065", "Lê Minh Nhật", "Line 3.2", "Helper 3.2", "G3", 3, "G3-A", 42.6, "A-1", 5.9, "2F", 3, false], ["F2066", "Vi Thị Nhi", "Line 8", "Sewer 8", "G3", 3, "G3-A", 42.6, "A-1", 3.9, "2F", 3, false], ["F2070", "Trần Thị Huỳnh Ngân", "Line 5", "Vice team Leader 5", "G4", 4, "G4-A", 42.6, "A-1", 4.8, "2F", 3, false], ["F2073", "Vi Văn Phố", "Supply 3", "Bartak", "G3", 3, "G3-A", 42.6, "B", 4.3, "2F", 3, false], ["F2077", "Lý Thị Ngoan", "Line 6", "Sewer 6", "G4", 4, "G4-A", 42.6, "A-1", 4.6, "2F", 3, false], ["F2081", "Vi Văn Tọt", "Cutting Dept", "Helper Cutting", "G3", 3, "G3-A", 42.6, "D", 4.9, "1F", 3, false], ["F2091", "Phan Khải Hoàng", "Line 2", "Sewer 2", "G3", 3, "G3-A", 42.4, "A-1", 5.7, "2F", 3, false], ["F2097", "Phạm Thị Mỹ Tâm", "Line 22", "Sewer 22", "G3", 3, "G3-A", 42.4, "A-2", 4.2, "1F", 3, false], ["F2103", "Trần Thị Kim Hồng", "Supply 3", "Computer", "G3", 3, "G3-A", 42.3, "B", 4.3, "2F", 2, false], ["F2106", "Doãn Thị Thiết", "Line 25", "Sewer 25", "G3", 3, "G3-A", 42.3, "A-2", 3.9, "1F", 3, false], ["F2109", "Hoàng Thị Thu", "Line 26", "Sewer 26", "G3", 3, "G3-A", 42.3, "A-2", 4.3, "1F", 3, false], ["F2113", "Thị Huỳnh Như", "Line 3.1", "Sewer 3.1", "G3", 3, "G3-A", 42.2, "A-1", 3.5, "2F", 3, false], ["F2116", "Lâm Thị Kim Sa", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 42.2, "E", 3.8, "1F", 3, false], ["F2117", "Dương Thị Hoa", "Warehouse Finishing", "Helper F.G", "G3", 3, "G3-A", 42.2, "E", 6.6, "1F", 3, false], ["F2119", "Lê Ngọc Hiền", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 41.9, "E", 3.8, "1F", 3, false], ["F2120", "Võ Thị Kiều Nhi", "QC & Packing Dept", "Packing", "G2", 2, "G2", 41.9, "E", 3.8, "1F", 3, false], ["F2124", "Nguyễn Thị Thanh Kim Huệ", "Line 8", "Leader 8", "G5", 5, "G5", 41.9, "A-1", 3.9, "2F", 3, false], ["F2125", "Trần Thị Thanh Thúy", "Line 27", "Sewer 27", "G3", 3, "G3-A", 41.9, "A-2", 5.6, "1F", 3, false], ["F2128", "Ngô Thị Hương", "Line 7", "Helper 7", "G2", 2, "G2", 41.9, "A-1", 3.5, "2F", 3, false], ["F2129", "Thổ Thị Thanh Nữ", "Line 8", "Sewer 8", "G2", 2, "G2", 41.9, "A-1", 3.9, "2F", 3, false], ["F2133", "Lâm Thị Thúy", "Line 5", "Sewer 5", "G3", 3, "G3-A", 41.9, "A-1", 4.8, "2F", 3, false], ["F2138", "Cù Thị Kim Linh", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 41.9, "E", 3.8, "1F", 3, false], ["F2140", "Phạm Thị Hải Yến", "Line 6", "Helper 6", "G3", 3, "G3-A", 41.9, "A-1", 4.6, "2F", 3, false], ["F2141", "Trần Thị Mỹ Kiều", "Line 26", "Sewer 26", "G3", 3, "G3-A", 41.9, "A-2", 4.3, "1F", 3, false], ["F2151", "Quảng Thị Diệu Hoa", "Supply 3", "Bartak", "G3", 3, "G3-A", 41.7, "B", 4.3, "2F", 3, false], ["F2154", "Đoàn Văn Thanh Việt", "Line 22", "Sewer 22", "G4", 4, "G4-A", 41.5, "A-2", 4.2, "1F", 3, false], ["F2163", "Phùng Lê Ngọc Dung", "Supply 3", "Computer", "G3", 3, "G3-A", 41.5, "B", 4.3, "2F", 3, false], ["F2164", "Nguyễn Thị Phương Thảo", "Line 24", "Sewer 24", "G2", 2, "G2", 41.5, "A-2", 4.2, "1F", 4, false], ["F2166", "Nguyễn Thị Hương", "Line 1", "Sewer 1", "G3", 3, "G3-A", 41.5, "A-1", 4.4, "2F", 3, false], ["F2174", "Nguyễn Thị Hồng", "Line 6", "Sewer 6", "G3", 3, "G3-A", 41.5, "A-1", 4.6, "2F", 3, false], ["F2179", "Mã Thị Cẩm Phương", "Supply 3", "Bartak", "G3", 3, "G3-A", 41.4, "B", 4.3, "2F", 3, false], ["F2180", "Lê Thị Ngọc Anh", "Line 8", "Sewer 8", "G3", 3, "G3-A", 41.4, "A-1", 3.9, "2F", 3, false], ["F2188", "Hoàng Thị Oanh", "Line 3.1", "Sewer 3.1", "G2", 2, "G2", 41.4, "A-1", 3.5, "2F", 3, false], ["F2192", "Thạch Thị Mỹ Hạnh", "Line 8", "Sewer 8", "G2", 2, "G2", 41.2, "A-1", 3.9, "2F", 3, false], ["F2208", "Võ Thị Xuân Thu", "Line 22", "Sewer 22", "G3", 3, "G3-A", 40.2, "A-2", 4.2, "1F", 3, false], ["F2209", "Bùi Thị Thanh Vân", "Supply 3", "Computer", "G3", 3, "G3-A", 39.8, "B", 4.3, "2F", 3, false], ["F2210", "Nguyễn Thị Thùy Trang", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 39.8, "E", 3.8, "1F", 3, false], ["F2211", "Lê Thị Kiều", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 39.8, "E", 3.8, "1F", 3, false], ["F2216", "Nguyễn Thị Hồng Công", "Line 8", "Sewer 8", "G3", 3, "G3-A", 39.6, "A-1", 3.9, "2F", 3, false], ["F2217", "Lê Minh Lợi", "Laser", "Laser", "G3", 3, "G3-A", 39.6, "D", 3.6, "1F", 3, false], ["F2218", "Nguyễn Thị Thúy", "Line 6", "Sewer 6", "G2", 2, "G2", 39.6, "A-1", 4.6, "2F", 3, false], ["F2225", "Đỗ Thị Thanh Sang", "Supply 3", "Computer", "G3", 3, "G3-A", 38.9, "B", 4.3, "2F", 3, false], ["F2230", "Trần Ngọc Hân", "Line 5", "Helper 5", "G2", 2, "G2", 38.7, "A-1", 4.8, "2F", 3, false], ["F2232", "Lê Tiến Thông", "Cleaner", "Cây xanh", "G2", 2, "G2", 37.9, "C", 1.0, "1F", 3, false], ["F2235", "Trương Thị Phượng Hằng", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 37.9, "E", 3.8, "1F", 3, false], ["F2238", "Nguyễn Thị Phi Anh", "Line 24", "Leader 24 + L#Part", "G5", 5, "G5", 37.9, "A-2", 4.2, "1F", 3, false], ["F2248", "Trần Thị Hậu", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 37.8, "E", 3.8, "1F", 3, false], ["F2249", "Lê Thị Kim Liên", "Line 21", "Sewer 21", "G3", 3, "G3-A", 37.8, "A-2", 5.3, "1F", 3, false], ["F2250", "Lê Toàn Thắng", "Line 6", "Helper 6", "G3", 3, "G3-A", 37.8, "A-1", 4.6, "2F", 3, false], ["F2252", "Thạch Nguyên", "Cutting Dept", "Cutting lectra", "--", 0, "--", 37.7, "D", 4.9, "1F", 3, false], ["F2256", "Trần Quang Đảm", "Preparation", "Preparation", "G3", 3, "G3-A", 37.7, "C", 2.9, "1F", 3, false], ["F2257", "Trần Thị Thanh Thảo", "Line 6", "Sewer 6", "G4", 4, "G4-A", 37.7, "A-1", 4.6, "2F", 3, false], ["F2259", "Đỗ Thị Huỳnh Nga", "L#Part", "Sewer L#Part", "G3", 3, "G3-A", 37.5, "A-2", 3.6, "1F", 3, false], ["F2261", "Đỗ Thị Kiều", "Supply 3", "Computer", "G3", 3, "G3-A", 37.5, "B", 4.3, "2F", 3, false], ["F2262", "Nguyễn Thị Lan Hương", "Supply 3", "Bartak", "G3", 3, "G3-A", 37.5, "B", 4.3, "2F", 3, false], ["F2265", "Nguyễn Thị Ánh Tuyết", "Line 28", "Sewer 28", "G3", 3, "G3-A", 37.5, "A-2", 4.7, "1F", 2, false], ["F2266", "Bùi Thị Ngọc Hằng", "Line 27", "Sewer 27", "G3", 3, "G3-A", 37.5, "A-2", 5.6, "1F", 3, false], ["F2267", "Phạm Thị Thúy", "Line 6", "Sewer 6", "G4", 4, "G4-A", 37.5, "A-1", 4.6, "2F", 3, false], ["F2269", "Hoàng Thị Thanh", "Line 28", "Sewer 28", "G4", 4, "G4-A", 37.5, "A-2", 4.7, "1F", 3, false], ["F2270", "Trương Thị Thúy", "Line 28", "Sewer 28", "G3", 3, "G3-A", 37.5, "A-2", 4.7, "1F", 3, false], ["F2273", "Đỗ Thị Thu Sang", "Line 6", "Sewer 6", "G3", 3, "G3-A", 37.3, "A-1", 4.6, "2F", 3, false], ["F2275", "Nguyễn Thị Nhành", "Line 6", "Sewer 6", "G3", 3, "G3-A", 37.3, "A-1", 4.6, "2F", 3, false], ["F2277", "Lâm Thị Bích Hường", "Supply 3", "Bartak", "G3", 3, "G3-A", 37.3, "B", 4.3, "2F", 3, false], ["F2280", "Huỳnh Tâm Như", "Line 3.1", "Sewer 3.1", "G2", 2, "G2", 37.3, "A-1", 3.5, "2F", 3, false], ["F2281", "Võ Thị Xuân Hồng", "Line 27", "Sewer 27", "G3", 3, "G3-A", 37.3, "A-2", 5.6, "1F", 3, false], ["F2289", "Đỗ Thị Luyện", "Line 22", "Sewer 22", "G3", 3, "G3-A", 37.3, "A-2", 4.2, "1F", 3, false], ["F2294", "Phan Thị Thùy Nhung", "Line 28", "Sewer 28", "G4", 4, "G4-A", 37.0, "A-2", 4.7, "1F", 3, false], ["F2295", "Nguyễn Thị Thanh Tuyền", "Line 28", "Sewer 28", "G3", 3, "G3-A", 37.0, "A-2", 4.7, "1F", 3, false], ["F2298", "Lê Thị Kim Chi", "Cleaner", "Cleaner", "G3", 3, "G3-A", 35.9, "C", 1.0, "1F", 3, false], ["F2299", "Huỳnh Thị Ngọc Dung", "Line 5", "Sewer 5", "G2", 2, "G2", 35.9, "A-1", 4.8, "2F", 3, false], ["F2301", "Vi Thị An ", "Line 5", "Sewer 5", "G3", 3, "G3-A", 35.9, "A-1", 4.8, "2F", 3, false], ["F2308", "Trần Thị Thúy Ngân", "Supply 3", "Computer", "G3", 3, "G3-A", 35.7, "B", 4.3, "2F", 3, false], ["F2311", "Phan Thị Thúy Phượng", "Line 3.3", "Sewer 3.3", "G3", 3, "G3-A", 35.7, "A-1", 3.7, "2F", 3, false], ["F2319", "Phan Thanh Lan", "Line 1", "Sewer 1", "G2", 2, "G2", 35.6, "A-1", 4.4, "2F", 3, false], ["F2326", "Đinh Thị Thùy Dung", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 35.2, "E", 3.8, "1F", 3, false], ["F2327", "Lê Thị Thanh Tuyền", "Line 8", "Sewer 8", "G2", 2, "G2", 35.2, "A-1", 3.9, "2F", 3, false], ["F2329", "Lê Thị Minh Khương", "Line 1", "Sewer 1", "G4", 4, "G4-A", 35.2, "A-1", 4.4, "2F", 3, false], ["F2331", "Lý Văn Hiển", "Line 5", "Sewer 5", "G4", 4, "G4-A", 35.2, "A-1", 4.8, "2F", 3, false], ["F2333", "Nguyễn Thị Hồng Diễm", "Line 1", "Sewer 1", "G3", 3, "G3-A", 35.2, "A-1", 4.4, "2F", 3, false], ["F2338", "Huỳnh Thị Hồng Gấm", "Line 3.4", "Leader 3.4", "G5", 5, "G5", 35.0, "A-1", 3.4, "2F", 3, false], ["F2339", "Phương Quế Thùy Linh", "Line 8", "Sewer 8", "G3", 3, "G3-A", 35.0, "A-1", 3.9, "2F", 3, false], ["F2341", "Đồng Thị Hậu", "Line 6", "Sewer 6", "G3", 3, "G3-A", 34.8, "A-1", 4.6, "2F", 3, false], ["F2350", "Trần Thị Hải", "Supply 3", "Bartak", "G3", 3, "G3-A", 34.8, "B", 4.3, "2F", 3, false], ["F2351", "Nguyễn Thị Hoài Trâm", "Line 5", "Sewer 5", "G4", 4, "G4-A", 34.8, "A-1", 4.8, "2F", 3, false], ["F2360", "Nguyễn Thị Hiền", "Line 26", "Sewer 26", "G3", 3, "G3-A", 34.7, "A-2", 4.3, "1F", 3, false], ["F2363", "Trần Thị Kim Hà", "Line 8", "Vice team Leader 8", "G4", 4, "G4-A", 34.6, "A-1", 3.9, "2F", 3, false], ["F2373", "Văn Thị Bích Trang", "Supply 3", "Computer", "G3", 3, "G3-A", 34.5, "B", 4.3, "2F", 3, false], ["F2376", "Dương Thị Kim Thúy", "Line 22", "Sewer 22", "G3", 3, "G3-A", 34.5, "A-2", 4.2, "1F", 3, false], ["F2377", "Lâm Thị Kim Tuyền", "Line 6", "Sewer 6", "G3", 3, "G3-A", 34.5, "A-1", 4.6, "2F", 3, false], ["F2382", "Bùi Thị Bích Phượng", "Line 4", "Sewer 4", "G3", 3, "G3-A", 34.5, "A-1", 4.4, "2F", 3, false], ["F2386", "Lê Thị Lan", "Line 25", "Leader 25", "G5", 5, "G5", 34.5, "A-2", 3.9, "1F", 3, false], ["F2387", "Phạm Thị Mộng Huyền", "Line 24", "Sewer 24", "G2", 2, "G2", 34.5, "A-2", 4.2, "1F", 3, false], ["F2389", "Lưu Thị Hòa", "Line 7", "Sewer 7", "G3", 3, "G3-A", 34.3, "A-1", 3.5, "2F", 3, false], ["F2391", "Trương Thị Thu Thảo", "Line 22", "Sewer 22", "G3", 3, "G3-A", 34.3, "A-2", 4.2, "1F", 3, false], ["F2400", "Đoàn Thị Kim Sa", "Line 5", "Sewer 5", "G3", 3, "G3-A", 34.3, "A-1", 4.8, "2F", 3, false], ["F2401", "Trương Kiều Thúy Vy", "Line 5", "Sewer 5", "G3", 3, "G3-A", 34.3, "A-1", 4.8, "2F", 3, false], ["F2408", "Nguyễn Thị Hiệp", "Line 24", "Sewer 24", "G3", 3, "G3-A", 34.3, "A-2", 4.2, "1F", 3, false], ["F2410", "Nguyễn Thị Hạnh", "Line 6", "Sewer 6", "G3", 3, "G3-A", 34.3, "A-1", 4.6, "2F", 3, false], ["F2418", "Nguyễn Yến Nhi", "Supply 3", "Bartak", "G3", 3, "G3-A", 33.9, "B", 4.3, "2F", 3, false], ["F2419", "Vũ Thị Hằng", "Supply 3", "Bartak", "G5", 5, "G5", 33.9, "B", 4.3, "2F", 3, false], ["F2421", "Bùi Thị Mộng Kiều", "Line 8", "Sewer 8", "G2", 2, "G2", 33.9, "A-1", 3.9, "2F", 3, false], ["F2422", "Trần Thị Thu Phượng", "Supply 3", "Computer", "G3", 3, "G3-A", 33.9, "B", 4.3, "2F", 3, false], ["F2427", "Lâm Văn Đức", "Rivet Dept", "Rivet", "G3", 3, "G3-A", 33.8, "B", 4.4, "1F", 3, false], ["F2430", "Nguyễn Đức Trọng", "Rivet Dept", "Rivet", "G3", 3, "G3-A", 33.8, "B", 4.4, "1F", 3, false], ["F2433", "Nguyễn Văn Thảo", "Line 28", "Helper 28", "G3", 3, "G3-A", 33.6, "A-2", 4.7, "1F", 3, false], ["F2438", "Nguyễn Anh Duy", "Supply 3", "Computer", "G3", 3, "G3-A", 33.6, "B", 4.3, "2F", 3, false], ["F2439", "Nguyễn Ngọc Thạch", "Supply 3", "Computer", "G3", 3, "G3-A", 33.6, "B", 4.3, "2F", 3, false], ["F2441", "Tạ Thị Lắm", "Line 3.3", "Sewer 3.3", "G3", 3, "G3-A", 33.6, "A-1", 3.7, "2F", 3, false], ["F2443", "Lâm Thị Sóc Khanh", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 33.6, "E", 3.8, "1F", 3, false], ["F2452", "Nguyễn Nhật Thanh Tâm", "Cutting Dept", "Cutting lectra", "--", 0, "--", 33.3, "D", 4.9, "1F", 3, false], ["F2454", "Nguyễn Thị Thúy Ngân", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 32.7, "E", 3.8, "1F", 3, false], ["F2458", "Nguyễn Thị Quỳnh", "Line 6", "Sewer 6", "G3", 3, "G3-A", 32.2, "A-1", 4.6, "2F", 1, false], ["F2464", "Nguyễn Thị Thanh", "Line 6", "Sewer 6", "G3", 3, "G3-A", 32.2, "A-1", 4.6, "2F", 3, false], ["F2469", "Ngô Thị Hải Yến", "Line 8", "Sewer 8", "G3", 3, "G3-A", 32.0, "A-1", 3.9, "2F", 3, false], ["F2472", "Lê Thị Hiền", "Line 8", "Sewer 8", "G2", 2, "G2", 32.0, "A-1", 3.9, "2F", 3, false], ["F2477", "Bùi Kim Quý", "Rivet Dept", "Rivet", "G3", 3, "G3-A", 31.8, "B", 4.4, "1F", 3, false], ["F2481", "Nguyễn Thị Loan", "Line 8", "Sewer 8", "G3", 3, "G3-A", 31.8, "A-1", 3.9, "2F", 3, false], ["F2482", "Hồ Thị Xuân Hương", "Line 8", "Sewer 8", "G3", 3, "G3-A", 31.8, "A-1", 3.9, "2F", 3, false], ["F2485", "Nguyễn Thị Ba", "Line 8", "Sewer 8", "G3", 3, "G3-A", 31.8, "A-1", 3.9, "2F", 3, false], ["F2488", "Trần Thị Thu Hương", "Line 8", "Sewer 8", "G3", 3, "G3-A", 31.7, "A-1", 3.9, "2F", 3, false], ["F2499", "Lê Ngọc Vân", "Line 25", "Sewer 25", "G3", 3, "G3-A", 31.6, "A-2", 3.9, "1F", 3, false], ["F2505", "Đoàn Thị Thuý Kiều", "Line 3.4", "Helper 3.4", "G2", 2, "G2", 31.5, "A-1", 3.4, "2F", 3, false], ["F2508", "Võ Ngọc Khánh Quỳnh", "QC & Packing Dept", "Packing", "G4", 4, "G4-A", 31.5, "E", 3.8, "1F", 2, false], ["F2513", "Trịnh Thị Thu Nguyệt", "Line 1", "Sewer 1", "G3", 3, "G3-A", 31.3, "A-1", 4.4, "2F", 3, false], ["F2518", "Đặng Thị Bích Loan", "Line 7", "Sewer 7", "G3", 3, "G3-A", 30.8, "A-1", 3.5, "2F", 3, false], ["F2523", "Huỳnh Thị Thu Nguyệt ", "Line 26", "Sewer 26", "G3", 3, "G3-A", 30.8, "A-2", 4.3, "1F", 3, false], ["F2526", "Lê Xuân Toàn", "Line 8", "Sewer 8", "G4", 4, "G4-A", 30.8, "A-1", 3.9, "2F", 3, false], ["F2533", "Hà Thị Trúc Giang", "PRT+EMB", "Printing", "G4", 4, "G4-A", 30.7, "D", 4.5, "1F", 3, false], ["F2535", "Nguyễn Thị In Tuyền", "Line 7", "Sewer 7", "G3", 3, "G3-A", 30.7, "A-1", 3.5, "2F", 3, false], ["F2536", "Nguyễn Thị Hà", "Line 4", "Sewer 4", "G3", 3, "G3-A", 30.7, "A-1", 4.4, "2F", 3, false], ["F2541", "Nguyễn Thị Hoàng Oanh", "Line 3.1", "Sewer 3.1", "G3", 3, "G3-A", 30.7, "A-1", 3.5, "2F", 3, false], ["F2555", "Nguyễn Thị Trà", "Line 24", "Sewer 24", "G4", 4, "G4-A", 30.6, "A-2", 4.2, "1F", 3, false], ["F2564", "Nguyễn Thị Bảy", "Line 4", "Sewer 4", "G3", 3, "G3-A", 30.4, "A-1", 4.4, "2F", 3, false], ["F2565", "Hoàng Thị Yên", "Preparation", "Preparation", "G4", 4, "G4-A", 30.4, "C", 2.9, "1F", 3, false], ["F2567", "Nguyễn Quốc Dũng", "Supply 3", "Bartak", "G3", 3, "G3-A", 30.4, "B", 4.3, "2F", 3, false], ["F2571", "Đỗ Đặng Kim Quyên", "Line 22", "Sewer 22", "G3", 3, "G3-A", 30.4, "A-2", 4.2, "1F", 3, false], ["F2574", "Trần Thị Hoàng", "Line 3.2", "Helper 3.2", "G2", 2, "G2", 30.4, "A-1", 5.9, "2F", 3, false], ["F2577", "Lê Thị Bích Ngân", "Line 6", "Sewer 6", "G2", 2, "G2", 30.4, "A-1", 4.6, "2F", 3, false], ["F2578", "Đoàn Công Khải", "Line 23", "Sewer 23", "G4", 4, "G4-A", 30.4, "A-2", 4.6, "1F", 3, false], ["F2581", "Nguyễn Thị Hường", "Line 7", "Sewer 7", "G2", 2, "G2", 30.3, "A-1", 3.5, "2F", 3, false], ["F2584", "Nguyễn Thị Mộng", "Line 7", "Sewer 7", "G3", 3, "G3-A", 30.0, "A-1", 3.5, "2F", 3, false], ["F2585", "Nguyễn Thị Ngọc Lan", "Line 27", "Sewer 27", "G3", 3, "G3-A", 30.0, "A-2", 5.6, "1F", 3, false], ["F2587", "Nguyễn Thị Hà", "Line 28", "Sewer 28", "G3", 3, "G3-A", 30.0, "A-2", 4.7, "1F", 3, false], ["F2591", "Nguyễn Thị Kiều Hoa", "Line 7", "Sewer 7", "G2", 2, "G2", 30.0, "A-1", 3.5, "2F", 3, false], ["F2592", "Nguyễn Thị Hoài Thương", "Maintenance", "Assistant", "G4", 4, "G4-A", 30.0, "F", 10.0, "1F", 3, false], ["F2593", "Đinh Trần Minh Thư", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 30.0, "E", 3.8, "1F", 3, false], ["F2603", "Phan Thị Diệu Hiền", "L#Part", "Helper L#Part", "G2", 2, "G2", 29.9, "A-2", 3.6, "1F", 2, false], ["F2609", "Phạm Hoàng Bão Trâm", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 29.7, "E", 3.8, "1F", 3, false], ["F2612", "Nguyễn Thị Ngọc Tươi", "Supply 3", "Computer", "G3", 3, "G3-A", 29.7, "B", 4.3, "2F", 2, false], ["F2613", "Long Thị Thuý Ngân", "Supply 3", "Computer", "G3", 3, "G3-A", 29.6, "B", 4.3, "2F", 3, false], ["F2618", "Nguyễn Thị Khuyên", "Line 4", "Sewer 4", "G3", 3, "G3-A", 29.5, "A-1", 4.4, "2F", 3, false], ["F2621", "Phạm Thị Hiền Hậu", "Supply 3", "Computer", "G3", 3, "G3-A", 29.5, "B", 4.3, "2F", 3, false], ["F2626", "Nguyễn Văn Trường", "Cutting Dept", "Helper cutting", "G2", 2, "G2", 29.2, "D", 4.9, "1F", 3, false], ["F2627", "Nguyễn Thị Bích Chi", "Divide", "Helper Divide", "G3", 3, "G3-A", 29.2, "D", 4.2, "1F", 2, false], ["F2628", "Giáp Ngọc Hiền", "Electricity", "Electricity", "--", 0, "--", 29.0, "F", 5.0, "1F", 3, false], ["F2630", "Nguyễn Thị Lụa", "Line 3.2", "Sewer 3.2", "G2", 2, "G2", 29.0, "A-1", 5.9, "2F", 3, false], ["F2631", "Trương Thị Thanh", "Line 2", "Sewer 2", "G4", 4, "G4-A", 29.0, "A-1", 5.7, "2F", 3, false], ["F2634", "Nguyễn Thị Hải", "Line 21", "Sewer 21", "G3", 3, "G3-A", 28.9, "A-2", 5.3, "1F", 3, false], ["F2635", "Đỗ Thị Thu Hà", "Line 21", "Sewer 21", "G4", 4, "G4-A", 28.9, "A-2", 5.3, "1F", 3, false], ["F2636", "Nguyễn Thị Bích Vân", "Line 22", "Sewer 22", "G4", 4, "G4-A", 28.9, "A-2", 4.2, "1F", 3, false], ["F2637", "Văn Thị Ngọc Hương", "Line 21", "Sewer 21", "G2", 2, "G2", 28.9, "A-2", 5.3, "1F", 3, false], ["F2640", "Dương Văn Hưng", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 28.8, "E", 3.8, "1F", 3, false], ["F2645", "Nguyễn Thị Thu Phú", "Line 7", "Study sewing 7", "G2", 2, "G2", 28.6, "A-1", 3.5, "2F", 3, false], ["F2648", "Phạm Phú Cường", "QC & Packing Dept", "QC", "G4", 4, "G4-A", 28.5, "E", 3.8, "1F", 3, false], ["F2650", "Nguyễn Thị Loan", "Line 27", "Sewer 27", "G4", 4, "G4-A", 28.3, "A-2", 5.6, "1F", 3, false], ["F2651", "Nguyễn Thị Hường", "Line 3.4", "Sewer 3.4", "G2", 2, "G2", 28.3, "A-1", 3.4, "2F", 3, false], ["F2654", "Nguyễn Thị Phượng", "Line 4", "Sewer 4", "G4", 4, "G4-A", 28.3, "A-1", 4.4, "2F", 0.0, false], ["F2655", "La Thị Kim Liên", "Line 26", "Sewer 26", "G3", 3, "G3-A", 28.3, "A-2", 4.3, "1F", 3, false], ["F2661", "Trịnh Thị Kim Nhung", "Line 7", "Sewer 7", "G3", 3, "G3-A", 28.3, "A-1", 3.5, "2F", 3, false], ["F2663", "Lê Thị Ngọc Tâm", "Line 27", "Sewer 27", "G3", 3, "G3-A", 28.3, "A-2", 5.6, "1F", 3, false], ["F2669", "Nguyễn Ngọc Hạc", "Line 3.4", "Sewer 3.4", "G3", 3, "G3-A", 28.3, "A-1", 3.4, "2F", 3, false], ["F2671", "Nguyễn Vũ Uyên Phương", "QC & Packing Dept", "QC", "G2", 2, "G2", 28.0, "E", 3.8, "1F", 3, false], ["F2672", "Nguyễn Thị Kiều Thủy", "Preparation", "Preparation", "G2", 2, "G2", 27.9, "C", 2.9, "1F", 3, false], ["F2682", "Đoàn Thị Trà My", "Line 8", "Sewer 8", "G3", 3, "G3-A", 27.4, "A-1", 3.9, "2F", 3, false], ["F2685", "Nguyễn Thị Thanh Nga", "Line 24", "Sewer 24", "G2", 2, "G2", 27.4, "A-2", 4.2, "1F", 3, false], ["F2687", "Võ Ngọc Bích Hậu", "Divide", "Helper Divide", "G3", 3, "G3-A", 27.4, "D", 4.2, "1F", 3, false], ["F2690", "Nguyễn Thị Hương", "Line 28", "Sewer 28", "G2", 2, "G2", 27.4, "A-2", 4.7, "1F", 3, false], ["F2693", "Nguyễn Thị Tuyết Trang", "Line 7", "Sewer 7", "G2", 2, "G2", 27.4, "A-1", 3.5, "2F", 3, false], ["F2694", "Nguyễn Thị Hoa", "Line 1", "Sewer 1", "G2", 2, "G2", 27.4, "A-1", 4.4, "2F", 3, false], ["F2703", "Phạm Thị Nhân", "Supply 3", "Computer", "G3", 3, "G3-A", 26.5, "B", 4.3, "2F", 3, false], ["F2704", "Đào Thị Loan", "Line 4", "Sewer 4", "G3", 3, "G3-A", 26.5, "A-1", 4.4, "2F", 3, false], ["F2705", "Trần Thị Ngọc Thanh", "Line 4", "Sewer 4", "G3", 3, "G3-A", 26.5, "A-1", 4.4, "2F", 3, false], ["F2706", "Nguyễn Thị Kim Phượng", "Supply 3", "Computer", "G3", 3, "G3-A", 26.5, "B", 4.3, "2F", 3, false], ["F2707", "Dương Thị Kim Trang", "Line 23", "Sewer 23", "G3", 3, "G3-A", 26.5, "A-2", 4.6, "1F", 3, false], ["F2710", "Nguyễn Viết Tài", "Cutting Dept", "Helper cutting", "G3", 3, "G3-A", 26.4, "D", 4.9, "1F", 3, false], ["F2711", "Nguyễn Thị Bích Liên", "Supply 3", "Computer", "G3", 3, "G3-A", 26.4, "B", 4.3, "2F", 3, false], ["F2712", "Cao Hồng Liên", "Supply 3", "Computer", "G3", 3, "G3-A", 26.4, "B", 4.3, "2F", 3, false], ["F2718", "Nguyễn Thị Ánh Nguyệt", "Line 4", "Sewer 4", "G4", 4, "G4-A", 26.3, "A-1", 4.4, "2F", 3, false], ["F2721", "Phạm Thị Kim Loan", "Line 3.4", "Sewer 3.4", "G2", 2, "G2", 26.2, "A-1", 3.4, "2F", 2, false], ["F2723", "Nguyễn Hoàng Ngọc Yến", "QC & Packing Dept", "Packing", "G2", 2, "G2", 26.1, "E", 3.8, "1F", 3, false], ["F2724", "Trần Thị Thúy Vân", "Supply 3", "Computer", "G3", 3, "G3-A", 26.1, "B", 4.3, "2F", 3, false], ["F2726", "Mạc Thị Thanh Hương", "Line 1", "Sewer 1", "G2", 2, "G2", 26.1, "A-1", 4.4, "2F", 3, false], ["F2731", "Trần Thị Thu Thanh", "Line 7", "Sewer 7", "G2", 2, "G2", 26.1, "A-1", 3.5, "2F", 3, false], ["F2732", "Trần Thị Kim Hòa", "Line 8", "Sewer 8", "G3", 3, "G3-A", 26.1, "A-1", 3.9, "2F", 3, false], ["F2733", "Bùi Thị Tiết Minh", "Line 8", "Sewer 8", "G3", 3, "G3-A", 26.1, "A-1", 3.9, "2F", 3, false], ["F2734", "Phạm Ngọc Nhẩn", "Line 4", "Sewer 4", "G4", 4, "G4-A", 26.1, "A-1", 4.4, "2F", 3, false], ["F2735", "Lê Thị Thu Vân", "Line 1", "Sewer 1", "G2", 2, "G2", 26.1, "A-1", 4.4, "2F", 3, false], ["F2738", "Trần Thị Hợi", "Line 23", "Sewer 23", "G2", 2, "G2", 25.3, "A-2", 4.6, "1F", 3, false], ["F2742", "Nguyễn Thị Lan Hương", "Supply 3", "Computer", "G3", 3, "G3-A", 25.3, "B", 4.3, "2F", 3, false], ["F2743", "Trần Thị Kiều Tiên", "Cutting Dept", "Helper cutting", "G2", 2, "G2", 25.3, "D", 4.9, "1F", 3, false], ["F2745", "Nguyễn Thị Thu An", "PRT+EMB", "Printing", "G3", 3, "G3-A", 25.3, "D", 4.5, "1F", 3, false], ["F2748", "Nguyễn Quốc Khánh", "Line 4", "Sewer 4", "G4", 4, "G4-A", 25.3, "A-1", 4.4, "2F", 3, false], ["F2754", "Nguyễn Thị Nhung", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 25.3, "E", 3.8, "1F", 3, false], ["F2760", "Trần Thị Thu Thảo", "Line 8", "Study sewing 8", "G2", 2, "G2", 25.2, "A-1", 3.9, "2F", 3, false], ["F2762", "Nguyễn Thị Kim Lập", "Line 2", "Sewer 2", "G3", 3, "G3-A", 25.2, "A-1", 5.7, "2F", 3, false], ["F2771", "Nguyễn Thị Thu Lang", "Preparation", "Preparation", "G3", 3, "G3-A", 25.1, "C", 2.9, "1F", 3, false], ["F2773", "Nguyễn Thị Thu Uyên", "Line 22", "Study sewing 22", "G2", 2, "G2", 25.1, "A-2", 4.2, "1F", 3, false], ["F2774", "Nguyễn Thị Thu Hồng", "Line 4", "Sewer 4", "G2", 2, "G2", 25.1, "A-1", 4.4, "2F", 3, false], ["F2776", "Trần Thị Thu Vân", "Supply 3", "Computer", "G3", 3, "G3-A", 25.1, "B", 4.3, "2F", 3, false], ["F2777", "Nguyễn Thị Kim Ngân", "Line 6", "Sewer 6", "G3", 3, "G3-A", 25.1, "A-1", 4.6, "2F", 3, false], ["F2778", "Ngô Thị Thanh Phượng", "Line 6", "Sewer 6", "G4", 4, "G4-A", 25.1, "A-1", 4.6, "2F", 3, false], ["F2779", "Nguyễn Thị Kim Thơ", "Line 3.2", "Sewer 3.2", "G2", 2, "G2", 25.1, "A-1", 5.9, "2F", 3, false], ["F2782", "Nguyễn Hoàng Phương Linh", "Supply 3", "Computer", "G3", 3, "G3-A", 25.1, "B", 4.3, "2F", 3, false], ["F2783", "Nguyễn Thị Cơ", "Line 7", "Sewer 7", "G3", 3, "G3-A", 25.1, "A-1", 3.5, "2F", 3, false], ["F2784", "Nguyễn Thị Tuyết Hằng", "Line 21", "Sewer 21", "G3", 3, "G3-A", 25.1, "A-2", 5.3, "1F", 3, false], ["F2785", "Nguyễn Thuỳ Hương", "Line 1", "Sewer 1", "G3", 3, "G3-A", 25.1, "A-1", 4.4, "2F", 3, false], ["F2791", "Trần Thị Kim Thanh", "Line 23", "Vice team Leader 23", "G4", 4, "G4-A", 25.1, "A-2", 4.6, "1F", 3, false], ["F2792", "Nguyễn Thị Hải Yến", "Supply 3", "Computer", "G3", 3, "G3-A", 25.1, "B", 4.3, "2F", 3, false], ["F2795", "Ngô Thị Kim Hoài", "Sample Room & I.E", "Sewer I.E", "--", 0, "--", 24.9, "F", 4.8, "1F", 3, false], ["F2799", "Huỳnh Ngọc Giàu", "Line 4", "Sewer 4", "G2", 2, "G2", 24.9, "A-1", 4.4, "2F", 3, false], ["F2800", "Phạm Thị Chiến", "Line 23", "Sewer 23", "G3", 3, "G3-A", 24.9, "A-2", 4.6, "1F", 3, false], ["F2801", "Nguyễn Thị Bạch Tuyết", "Line 22", "Sewer 22", "G3", 3, "G3-A", 24.9, "A-2", 4.2, "1F", 3, false], ["F2802", "Nguyễn Thị Tuyết", "Line 6", "Sewer 6", "G3", 3, "G3-A", 24.9, "A-1", 4.6, "2F", 3, false], ["F2803", "Ngô Bích Thuỷ", "Line 5", "Sewer 5", "G3", 3, "G3-A", 24.9, "A-1", 4.8, "2F", 3, false], ["F2804", "Võ Thị Trúc", "Line 6", "Sewer 6", "G3", 3, "G3-A", 24.9, "A-1", 4.6, "2F", 3, false], ["F2805", "Trần Thị Minh Ngọc", "Line 23", "Sewer 23", "G2", 2, "G2", 24.9, "A-2", 4.6, "1F", 0.0, false], ["F2806", "Nguyễn Thị Thuỳ Lan", "Line 28", "Sewer 28", "G3", 3, "G3-A", 24.9, "A-2", 4.7, "1F", 3, false], ["F2808", "Đỗ Thị Thanh Hương", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 24.9, "E", 3.8, "1F", 3, false], ["F2811", "Nguyễn Thị Kim Tiến", "QC & Packing Dept", "Packing", "G2", 2, "G2", 24.9, "E", 3.8, "1F", 3, false], ["F2813", "Nguyễn Thị Thu Trang", "QC & Packing Dept", "Packing", "G2", 2, "G2", 24.9, "E", 3.8, "1F", 3, false], ["F2815", "Nguyễn Hoàng Đức Thanh", "Sample Room & I.E", "Staff Pattern  (nhân viên Rập)", "G3", 3, "G3-A", 24.9, "F", 4.8, "1F", 3, false], ["F2816", "Đoàn Huy Bình", "Seam Sling", "Helper Seam Sling", "G3", 3, "G3-A", 24.9, "C", 3.7, "1F", 3, false], ["F2818", "Bùi Thị Nga", "Sample Room & I.E", "Sewer I.E", "--", 0, "--", 24.9, "F", 4.8, "1F", 3, false], ["F2820", "Nguyễn Thị Diễm Phương", "Supply 3", "Computer", "G3", 3, "G3-A", 24.9, "B", 4.3, "2F", 3, false], ["F2822", "Nguyễn Thị Mỹ Lan", "Line 23", "Sewer 23", "G2", 2, "G2", 24.9, "A-2", 4.6, "1F", 3, false], ["F2826", "La Thị Hoa", "Line 6", "Sewer 6", "G3", 3, "G3-A", 24.9, "A-1", 4.6, "2F", 3, false], ["F2829", "Đỗ Thị Anh Thư", "Supply 3", "Bartak", "G3", 3, "G3-A", 24.9, "B", 4.3, "2F", 3, false], ["F2831", "Huỳnh Thị Kim Loan", "Line 22", "Sewer 22", "G3", 3, "G3-A", 24.9, "A-2", 4.2, "1F", 3, false], ["F2834", "Lê Ngọc Nghi", "Line 28", "Leader Line 27, 28", "G5", 5, "G5", 24.9, "A-2", 4.7, "1F", 3, false], ["F2835", "Kim Thị Hồng Nhiên", "Line 7", "Sewer 7", "G3", 3, "G3-A", 24.9, "A-1", 3.5, "2F", 3, false], ["F2841", "Võ Thị Cẩm Tú", "Line 4", "Sewer 4", "G3", 3, "G3-A", 24.8, "A-1", 4.4, "2F", 3, false], ["F2844", "Phan Thị Thu", "Supply 3", "Computer", "G2", 2, "G2", 24.8, "B", 4.3, "2F", 3, false], ["F2848", "Trần Thị Kim Hoa", "Line 3.4", "Sewer 3.4", "G2", 2, "G2", 24.8, "A-1", 3.4, "2F", 3, false], ["F2849", "Phương Ngọc Oanh", "Line 22", "Sewer 22", "G2", 2, "G2", 24.8, "A-2", 4.2, "1F", 3, false], ["F2853", "Trần Thị Thu Thuỷ", "Line 24", "Sewer 24", "G2", 2, "G2", 24.8, "A-2", 4.2, "1F", 3, false], ["F2856", "Lê Thị Ngọc Hà", "Line 27", "Sewer 27", "G3", 3, "G3-A", 24.8, "A-2", 5.6, "1F", 3, false], ["F2857", "Nguyễn Thị Thu Trang", "Line 1", "Sewer 1", "G3", 3, "G3-A", 24.8, "A-1", 4.4, "2F", 3, false], ["F2861", "Nguyễn Thị Ngọc Trang", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 24.7, "E", 3.8, "1F", 3, false], ["F2871", "Lê Thị Mai", "Line 8", "Sewer 8", "G3", 3, "G3-A", 24.4, "A-1", 3.9, "2F", 3, false], ["F2873", "Nguyễn Đức Phước", "Seam Sling", "Helper Seam Sling", "G3", 3, "G3-A", 24.4, "C", 3.7, "1F", 3, false], ["F2874", "Đỗ Thị Thái", "Line 3.3", "Helper 3.3", "G2", 2, "G2", 24.4, "A-1", 3.7, "2F", 3, false], ["F2875", "Trần Thị Tuyết Thảo", "Supply 3", "Bartak", "G3", 3, "G3-A", 24.4, "B", 4.3, "2F", 3, false], ["F2876", "Trần Thị Quỳnh Như", "Line 3.2", "Helper 3.2", "G2", 2, "G2", 24.4, "A-1", 5.9, "2F", 3, false], ["F2878", "Trần Thị Huyền", "Line 27", "Sewer 27", "G3", 3, "G3-A", 24.4, "A-2", 5.6, "1F", 3, false], ["F2880", "Trần Thị Bảo Khuyên", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 24.3, "E", 3.8, "1F", 3, false], ["F2886", "Võ Thị Thanh Hà", "Line 23", "Sewer 23", "G4", 4, "G4-A", 24.0, "A-2", 4.6, "1F", 3, false], ["F2887", "Trần Thị Lệ Giang", "Line 23", "Sewer 23", "G3", 3, "G3-A", 24.0, "A-2", 4.6, "1F", 1, false], ["F2892", "Nguyễn Thị Hoàng Giang", "QC & Packing Dept", "QC", "G2", 2, "G2", 24.0, "E", 3.8, "1F", 2, false], ["F2894", "Ngô Văn Tú", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 24.0, "E", 3.8, "1F", 3, false], ["F2895", "Phạm Thị Nguyên", "Line 23", "Sewer 23", "G2", 2, "G2", 23.9, "A-2", 4.6, "1F", 3, false], ["F2896", "Phạm Thị Hạt", "Line 21", "Sewer 21", "G4", 4, "G4-A", 23.9, "A-2", 5.3, "1F", 3, false], ["F2898", "Nguyễn Thị Tám Anh", "Line 23", "Sewer 23", "G3", 3, "G3-A", 23.9, "A-2", 4.6, "1F", 3, false], ["F2900", "Mai Thị Phương", "Line 23", "Sewer 23", "G2", 2, "G2", 23.9, "A-2", 4.6, "1F", 2, false], ["F2901", "Nguyễn Thị Hồng Hoa", "Line 23", "Sewer 23", "G3", 3, "G3-A", 23.9, "A-2", 4.6, "1F", 3, false], ["F2902", "Nguyễn Thị Tường Vi", "Line 23", "Sewer 23", "G2", 2, "G2", 23.9, "A-2", 4.6, "1F", 3, false], ["F2903", "Nguyễn Thị Yến", "Line 23", "Sewer 23", "G3", 3, "G3-A", 23.9, "A-2", 4.6, "1F", 3, false], ["F2906", "Đỗ Thị Thuý", "Line 23", "Sewer 23", "G3", 3, "G3-A", 23.9, "A-2", 4.6, "1F", 3, false], ["F2909", "Phan Thị Thu", "Preparation", "Preparation", "G2", 2, "G2", 23.8, "C", 2.9, "1F", 3, false], ["F2910", "Trần Nữ Kiều Trinh", "Line 23", "Sewer 23", "G4", 4, "G4-A", 23.8, "A-2", 4.6, "1F", 3, false], ["F2911", "Phạm Thị Ngọc Yến", "Line 23", "Leader 23", "G5", 5, "G5", 23.8, "A-2", 4.6, "1F", 3, false], ["F2917", "Nguyễn Thị Hồng Nhung", "QC & Packing Dept", "QC", "G2", 2, "G2", 23.7, "E", 3.8, "1F", 2, false], ["F2924", "Nguyễn Thị Trang", "Line 21", "Sewer 21", "G3", 3, "G3-A", 23.7, "A-2", 5.3, "1F", 3, false], ["F2925", "Nguyễn Thị Thu Thảo", "Line 1", "Sewer 1", "G4", 4, "G4-A", 23.7, "A-1", 4.4, "2F", 3, false], ["F2928", "Lê Xuân Hậu", "Warehouse Finishing", "Leader F.G", "G4", 4, "G4-A", 23.7, "E", 6.6, "1F", 3, false], ["F2930", "Nguyễn Thị Thuý Hằng", "Sample Room & I.E", "Sewer I.E", "--", 0, "--", 24.0, "F", 4.8, "1F", 3, false], ["F2933", "Trần Thị Mến", "Line 1", "Sewer 1", "G3", 3, "G3-A", 23.7, "A-1", 4.4, "2F", 3, false], ["F2934", "Trần Ngọc Long", "Warehouse Finishing", "Helper F.G", "G3", 3, "G3-A", 23.5, "E", 6.6, "1F", 3, false], ["F2938", "Nguyễn Thị Thu Hiền", "Supply 3", "Bartak", "G3", 3, "G3-A", 23.5, "B", 4.3, "2F", 3, false], ["F2942", "Huỳnh Thị Mỹ Anh", "Line 28", "Sewer 28", "G3", 3, "G3-A", 23.5, "A-2", 4.7, "1F", 4, false], ["F2947", "Phan Thị Ngọc Ánh", "Line 28", "Vice team Leader 28", "G4", 4, "G4-A", 23.5, "A-2", 4.7, "1F", 3, false], ["F2948", "Lê Thị Ngân", "Line 21", "Sewer 21", "G3", 3, "G3-A", 23.5, "A-2", 5.3, "1F", 3, false], ["F2949", "Nguyễn Thị Thái Dân", "Line 3.1", "Sewer 3.1", "G2", 2, "G2", 23.5, "A-1", 3.5, "2F", 3, false], ["F2955", "Nguyễn Thị Trang", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 23.5, "E", 3.8, "1F", 3, false], ["F2957", "Dương Thị Ngọc Diễm", "Line 21", "Sewer 21", "G3", 3, "G3-A", 23.5, "A-2", 5.3, "1F", 3, false], ["F2958", "Dương Thị Thanh Thủy", "Line 21", "Sewer 21", "G3", 3, "G3-A", 23.5, "A-2", 5.3, "1F", 3, false], ["F2961", "Nguyễn Thị Thuỳ Linh", "Line 23", "Sewer 23", "G3", 3, "G3-A", 23.3, "A-2", 4.6, "1F", 3, false], ["F2962", "Hồ Thị Khuyên", "Line 23", "Sewer 23", "G4", 4, "G4-A", 23.3, "A-2", 4.6, "1F", 3, false], ["F2965", "Dương Thị Thu Nguyên", "QC & Packing Dept", "QC", "G2", 2, "G2", 23.3, "E", 3.8, "1F", 3, false], ["F2970", "Ksor H' Tuyết", "Line 4", "Sewer 4", "G2", 2, "G2", 23.3, "A-1", 4.4, "2F", 3, false], ["F2971", "Đào Cẩm Nhung", "Line 8", "Sewer 8", "G2", 2, "G2", 23.3, "A-1", 3.9, "2F", 3, false], ["F2973", "Bùi Thị Ngọc", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 23.2, "E", 3.8, "1F", 3, false], ["F2977", "Nguyễn Thị Hồng Sỹ", "Cleaner", "Cleaner", "G2", 2, "G2", 23.0, "C", 1.0, "1F", 3, false], ["F2979", "Trương Thị Mỹ Dung", "Line 3.2", "Sewer 3.2", "G4", 4, "G4-A", 23.0, "A-1", 5.9, "2F", 3, false], ["F2980", "Huỳnh Thị Ninh", "Line 8", "Sewer 8", "G2", 2, "G2", 23.0, "A-1", 3.9, "2F", 3, false], ["F2981", "Mai Phương Loan", "Line 8", "Sewer 8", "G2", 2, "G2", 23.0, "A-1", 3.9, "2F", 3, false], ["F2988", "Trần Thị Mỹ Hạnh", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 22.8, "E", 3.8, "1F", 3, false], ["F2995", "Đỗ Minh Đức", "Line 28", "Sewer 28", "G3", 3, "G3-A", 22.8, "A-2", 4.7, "1F", 3, false], ["F2998", "Nguyễn Thị Thanh Lý", "Supply 3", "Bartak", "G2", 2, "G2", 22.8, "B", 4.3, "2F", 3, false], ["F2999", "Châu Tuấn Nguyên", "Supply 3", "Bartak", "G3", 3, "G3-A", 22.8, "B", 4.3, "2F", 3, false], ["F3000", "Vũ Thị Liên", "Supply 3", "Bartak", "G3", 3, "G3-A", 22.8, "B", 4.3, "2F", 3, false], ["F3001", "Nguyễn Thị Thu Huyền", "Supply 3", "Computer", "G3", 3, "G3-A", 22.8, "B", 4.3, "2F", 3, false], ["F3004", "Nguyễn Thị Ngọc Trâm", "Line 8", "Sewer 8", "G2", 2, "G2", 22.8, "A-1", 3.9, "2F", 3, false], ["F3012", "Nguyễn Thị Diễm Quỳnh", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 22.8, "E", 3.8, "1F", 3, false], ["F3020", "Trần Thị Ngọc Yến", "Line 23", "Helper 23", "G2", 2, "G2", 22.6, "A-2", 4.6, "1F", 3, false], ["F3023", "Nguyễn Thị Kim Hồng", "Line 22", "Sewer 22", "G3", 3, "G3-A", 22.6, "A-2", 4.2, "1F", 3, false], ["F3032", "Phạm Thị Thảo", "Line 8", "Sewer 8", "G2", 2, "G2", 22.6, "A-1", 3.9, "2F", 3, false], ["F3034", "Ngô Thị Thanh Loan", "Line 28", "Sewer 28", "G3", 3, "G3-A", 22.6, "A-2", 4.7, "1F", 3, false], ["F3035", "Vi Thị Phúc", "Line 5", "Sewer 5", "G3", 3, "G3-A", 22.6, "A-1", 4.8, "2F", 2, false], ["F3040", "Nguyễn Ngọc Lan Chi", "QC & Packing Dept", "QC", "G2", 2, "G2", 22.5, "E", 3.8, "1F", 3, false], ["F3047", "Đào Thị Mỹ Duyên", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 22.5, "E", 3.8, "1F", 3, false], ["F3052", "Trương Thị Cẩm Nhung", "Line 7", "Sewer 7", "G3", 3, "G3-A", 22.4, "A-1", 3.5, "2F", 3, false], ["F3053", "Nguyễn Thị Bích Ánh", "Line 7", "Sewer 7", "G3", 3, "G3-A", 22.4, "A-1", 3.5, "2F", 3, false], ["F3054", "Nguyễn Thị Bích Diệu", "Line 7", "Sewer 7", "G2", 2, "G2", 22.4, "A-1", 3.5, "2F", 3, false], ["F3062", "Nguyễn Thanh Hùng", "Divide", "Helper Divide", "G3", 3, "G3-A", 22.3, "D", 4.2, "1F", 3, false], ["F3064", "Nguyễn Hải Lý", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 22.3, "E", 3.8, "1F", 3, false], ["F3065", "Dương Quan Quý", "Divide", "Helper Divide", "G3", 3, "G3-A", 22.3, "D", 4.2, "1F", 3, false], ["F3069", "Nguyễn Thị Phượng", "Line 4", "Study sewing 4", "G2", 2, "G2", 22.3, "A-1", 4.4, "2F", 3, false], ["F3071", "Nguyễn Thị Diễm Thuý", "Line 6", "Sewer 6", "G3", 3, "G3-A", 22.3, "A-1", 4.6, "2F", 3, false], ["F3072", "Đào Thị Thuỷ", "Line 7", "Sewer 7", "G3", 3, "G3-A", 22.3, "A-1", 3.5, "2F", 3, false], ["F3079", "Phan Trọng Hữu", "Seam Sling", "Helper Seam Sling", "G3", 3, "G3-A", 22.3, "C", 3.7, "1F", 2, false], ["F3084", "Trần Thị Diễm Chi", "PRT+EMB", "Embroider", "G3", 3, "G3-A", 22.3, "D", 4.5, "1F", 3, false], ["F3086", "Phạm Anh Quốc", "Supply 3", "Bartak", "G3", 3, "G3-A", 22.1, "B", 4.3, "2F", 3, false], ["F3088", "Nguyễn Văn Bòn", "Warehouse Finishing", "Helper F.G", "G4", 4, "G4-A", 22.1, "E", 6.6, "1F", 3, false], ["F3089", "Hoàng Thị Tám", "Line 1", "Sewer 1", "G2", 2, "G2", 22.1, "A-1", 4.4, "2F", 3, false], ["F3090", "Nguyễn Thị Thu Hồng", "Line 3.2", "Sewer 3.2", "G2", 2, "G2", 22.1, "A-1", 5.9, "2F", 3, false], ["F3096", "Trần Thị Hồng Thơ", "Line 25", "Sewer 25", "G3", 3, "G3-A", 22.1, "A-2", 3.9, "1F", 3, false], ["F3104", "Ksosr Hoài", "Warehouse Finishing", "Helper F.G", "G3", 3, "G3-A", 22.1, "E", 6.6, "1F", 3, false], ["F3112", "Nguyễn Thị Huệ", "Line 5", "Sewer 5", "G3", 3, "G3-A", 21.9, "A-1", 4.8, "2F", 3, false], ["F3114", "Nguyễn Thị Kiều Diễm", "Line 7", "Sewer 7", "G2", 2, "G2", 21.9, "A-1", 3.5, "2F", 3, false], ["F3119", "Nguyễn Thị Lài", "Supply 3", "Bartak", "G3", 3, "G3-A", 21.9, "B", 4.3, "2F", 3, false], ["F3121", "Nguyễn Thị Thuý", "QC & Packing Dept", "Packing", "G2", 2, "G2", 21.9, "E", 3.8, "1F", 3, false], ["F3127", "Nguyễn Ngọc Yến Nhi", "Line 6", "Sewer 6", "G3", 3, "G3-A", 21.9, "A-1", 4.6, "2F", 3, false], ["F3134", "Mạc Thị Ánh Tuyết", "Supply 3", "Computer", "G3", 3, "G3-A", 21.8, "B", 4.3, "2F", 3, false], ["F3135", "Ngô Cẩm Duyên", "Supply 3", "Computer", "G3", 3, "G3-A", 21.8, "B", 4.3, "2F", 3, false], ["F3137", "Lê Thị Hồng Liên", "Line 6", "Sewer 6", "G3", 3, "G3-A", 21.8, "A-1", 4.6, "2F", 3, false], ["F3139", "Phạm Mai Ánh Như", "Supply 3", "Computer", "G3", 3, "G3-A", 21.8, "B", 4.3, "2F", 3, false], ["F3141", "Nguyễn Thị Lành", "Line 4", "Sewer 4", "G3", 3, "G3-A", 21.8, "A-1", 4.4, "2F", 3, false], ["F3149", "Dương Nhật Quang", "Line 8", "Sewer 8", "G3", 3, "G3-A", 21.6, "A-1", 3.9, "2F", 3, false], ["F3150", "Nguyễn Thị Thu Thảo", "Line 8", "Sewer 8", "G2", 2, "G2", 21.6, "A-1", 3.9, "2F", 3, false], ["F3154", "Đoàn Thị Thuỳ", "Line 6", "Sewer 6", "G2", 2, "G2", 21.6, "A-1", 4.6, "2F", 3, false], ["F3155", "Hoàng Thị Vy", "Supply 3", "Computer", "G3", 3, "G3-A", 21.6, "B", 4.3, "2F", 3, false], ["F3156", "Phan Thị Yến Nhi", "Supply 3", "Computer", "G3", 3, "G3-A", 21.6, "B", 4.3, "2F", 3, false], ["F3157", "Hoàng Thị Kim Oanh", "Supply 3", "Computer", "G2", 2, "G2", 21.6, "B", 4.3, "2F", 3, false], ["F3163", "Phạm Thị Hoài Trang", "Divide", "Helper Divide", "G3", 3, "G3-A", 21.5, "D", 4.2, "1F", 3, false], ["F3166", "Lưu Thị Nga", "Line 6", "Sewer 6", "G3", 3, "G3-A", 21.4, "A-1", 4.6, "2F", 3, false], ["F3167", "Trần Thị Mỹ Dung", "Line 6", "Sewer 6", "G2", 2, "G2", 21.4, "A-1", 4.6, "2F", 3, false], ["F3171", "Nông Thị Tiến", "Line 21", "Sewer 21", "G3", 3, "G3-A", 21.4, "A-2", 5.3, "1F", 3, false], ["F3172", "Trần Thị Thương", "Line 5", "Sewer 5", "G4", 4, "G4-A", 21.4, "A-1", 4.8, "2F", 3, false], ["F3173", "Nguyễn Thị Hải", "Line 8", "Sewer 8", "G4", 4, "G4-A", 21.4, "A-1", 3.9, "2F", 3, false], ["F3174", "Trần Thị Kim Phụng", "Line 25", "Sewer 25", "G3", 3, "G3-A", 21.4, "A-2", 3.9, "1F", 3, false], ["F3175", "Huỳnh Thị Hồng Đào", "Line 28", "Helper 28", "G3", 3, "G3-A", 21.4, "A-2", 4.7, "1F", 3, false], ["F3178", "Hoàng Thị Cao", "Line 21", "Sewer 21", "G2", 2, "G2", 21.4, "A-2", 5.3, "1F", 3, false], ["F3179", "Trần Thị Cẩm Lệ", "Line 1", "Sewer 1", "G2", 2, "G2", 21.4, "A-1", 4.4, "2F", 3, false], ["F3182", "Trần Thị Thu Liểu", "Supply 3", "Bartak", "G3", 3, "G3-A", 21.4, "B", 4.3, "2F", 3, false], ["F3183", "Nguyễn Huỳnh Châu Nhi", "QC & Packing Dept", "QC", "G3", 3, "G3-A", 21.4, "E", 3.8, "1F", 3, false], ["F3184", "Lê Nhật Tú Uyên", "QC & Packing Dept", "QC", "G2", 2, "G2", 21.4, "E", 3.8, "1F", 3, false], ["F3187", "Trần Cẩm Linh", "Line 7", "Vice team Leader 7", "G4", 4, "G4-A", 21.2, "A-1", 3.5, "2F", 3, false], ["F3190", "Lê Văn Long", "Line 8", "Sewer 8", "G3", 3, "G3-A", 21.2, "A-1", 3.9, "2F", 3, false], ["F3196", "Hoàng Thị Liên", "Line 7", "Sewer 7", "G2", 2, "G2", 21.2, "A-1", 3.5, "2F", 3, false], ["F3201", "Nguyễn Văn Thành", "Divide", "Helper Divide", "G3", 3, "G3-A", 21.0, "D", 4.2, "1F", 3, false], ["F3203", "Hoàng Thị Yến Linh", "Line 6", "Sewer 6", "G3", 3, "G3-A", 20.9, "A-1", 4.6, "2F", 3, false], ["F3204", "Phan Thanh Tùng", "Preparation", "Preparation", "G2", 2, "G2", 20.9, "C", 2.9, "1F", 3, false], ["F3206", "Trần Thị Kim Hoa", "Line 3.4", "Sewer 3.4", "G3", 3, "G3-A", 20.9, "A-1", 3.4, "2F", 3, false], ["F3207", "Lê Thị Đài Trang", "Line 6", "Sewer 6", "G2", 2, "G2", 20.9, "A-1", 4.6, "2F", 3, false], ["F3208", "Tô Thị Chéng", "Line 6", "Sewer 6", "G2", 2, "G2", 20.9, "A-1", 4.6, "2F", 3, false], ["F3220", "Trần Thuý Hiệp", "Line 8", "Sewer 8", "G3", 3, "G3-A", 20.7, "A-1", 3.9, "2F", 3, false], ["F3225", "Nguyễn Thị Ngọc Đại", "Line 8", "Sewer 8", "G2", 2, "G2", 20.5, "A-1", 3.9, "2F", 3, false], ["F3228", "Nguyễn Thị Mai", "Line 8", "Sewer 8", "G3", 3, "G3-A", 20.5, "A-1", 3.9, "2F", 3, false], ["F3231", "Huỳnh Văn Minh", "Rivet Dept", "Rivet", "G3", 3, "G3-A", 20.5, "B", 4.4, "1F", 3, false], ["F3233", "Trần Thị Liên", "Line 6", "Sewer 6", "G3", 3, "G3-A", 20.5, "A-1", 4.6, "2F", 3, false], ["F3237", "Thạch Thị Lẹ", "Line 21", "Sewer 21", "G2", 2, "G2", 20.5, "A-2", 5.3, "1F", 3, false], ["F3244", "Nguyễn Thị Ngọc Cẩn", "Line 28", "Sewer 28", "G3", 3, "G3-A", 20.5, "A-2", 4.7, "1F", 3, false], ["F3247", "Nguyễn Thị Lâm Tiền", "Line 6", "Sewer 6", "G3", 3, "G3-A", 20.4, "A-1", 4.6, "2F", 3, false], ["F3249", "Nguyễn Thị Tiến", "Line 6", "Sewer 6", "G2", 2, "G2", 20.4, "A-1", 4.6, "2F", 3, false], ["F3252", "Lý Thị Cẩm Hiền", "Preparation", "Preparation", "G4", 4, "G4-A", 20.4, "C", 2.9, "1F", 3, false], ["F3255", "Hồ Văn Sáng", "Line 22", "Sewer 22", "G3", 3, "G3-A", 20.3, "A-2", 4.2, "1F", 3, false], ["F3256", "Nguyễn Thị Lộc", "QC & Packing Dept", "Packing", "G2", 2, "G2", 20.2, "E", 3.8, "1F", 3, false], ["F3262", "Đỗ Thị Hồng Hoa", "Line 4", "Vice team Leader 4", "G4", 4, "G4-A", 19.4, "A-1", 4.4, "2F", 3, false], ["F3264", "Lê Văn Đính", "Supply 3", "Bartak", "G2", 2, "G2", 19.4, "B", 4.3, "2F", 3, false], ["F3265", "Lê Thị Ái Thuỷ", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 19.3, "E", 3.8, "1F", 3, false], ["F3267", "Phạm Thị Hà Tiên", "Supply 3", "Bartak", "G3", 3, "G3-A", 19.3, "B", 4.3, "2F", 3, false], ["F3273", "Trần Thị Hiền", "Line 7", "Sewer 7", "G2", 2, "G2", 18.7, "A-1", 3.5, "2F", 3, false], ["F3274", "Phạm Thị Thu Trang", "Line 7", "Sewer 7", "G4", 4, "G4-A", 18.7, "A-1", 3.5, "2F", 3, false], ["F3275", "Phan Thị Kim Oanh", "Line 7", "Sewer 7", "G2", 2, "G2", 18.7, "A-1", 3.5, "2F", 3, false], ["F3276", "Lê Thị Mộng Thu", "Line 7", "Sewer 7", "G3", 3, "G3-A", 18.7, "A-1", 3.5, "2F", 3, false], ["F3277", "Nguyễn Thị Bích Hạnh", "Line 21", "Sewer 21", "G3", 3, "G3-A", 18.7, "A-2", 5.3, "1F", 3, false], ["F3280", "Thị Tâm", "Line 6", "Sewer 6", "G2", 2, "G2", 18.7, "A-1", 4.6, "2F", 3, false], ["F3281", "Trần Thị Nguyên", "Line 24", "Sewer 24", "G2", 2, "G2", 18.7, "A-2", 4.2, "1F", 3, false], ["F3284", "Nguyễn Huỳnh Thuý Liểu", "Line 7", "Sewer 7", "G3", 3, "G3-A", 18.7, "A-1", 3.5, "2F", 3, false], ["F3286", "Nguyễn Thị Hạnh", "Sample Room & I.E", "Sewer I.E", "G3", 3, "G3-A", 18.6, "F", 4.8, "1F", 0.0, false], ["F3287", "Nguyễn Thị Kim Hoàng", "Line 24", "Sewer 24", "G2", 2, "G2", 18.6, "A-2", 4.2, "1F", 3, false], ["F3289", "Nguyễn Thị Hồng Đào", "L#Part", "Sewer L#Part", "G2", 2, "G2", 18.6, "A-2", 3.6, "1F", 3, false], ["F3292", "Nguyễn Hoài Linh", "Maintenance", "Maintenance", "G4", 4, "G4-A", 18.5, "F", 10.0, "1F", 3, false], ["F3293", "Lê Thị Mỹ Chi", "Line 8", "Sewer 8", "G4", 4, "G4-A", 18.5, "A-1", 3.9, "2F", 3, false], ["F3296", "Trần Thị Thanh Thảo", "Line 8", "Sewer 8", "G3", 3, "G3-A", 18.4, "A-1", 3.9, "2F", 3, false], ["F3298", "Phương Thị Ngọc Yến", "Line 21", "Sewer 21", "G3", 3, "G3-A", 18.4, "A-2", 5.3, "1F", 3, false], ["F3299", "Nguyễn Thị Ngọc Bích", "Line 23", "Sewer 23", "G3", 3, "G3-A", 18.4, "A-2", 4.6, "1F", 3, false], ["F3302", "Trần Thị Út", "Line 3.4", "Helper 3.4", "G2", 2, "G2", 18.4, "A-1", 3.4, "2F", 3, false], ["F3303", "Cao Thị Ngọc Bích", "Line 3.2", "Sewer 3.2", "G4", 4, "G4-A", 18.4, "A-1", 5.9, "2F", 3, false], ["F3311", "Nguyễn Thị Hoa", "Line 7", "Sewer 7", "G3", 3, "G3-A", 18.2, "A-1", 3.5, "2F", 3, false], ["F3312", "Lương Trí Phụng", "Seam Sling", "Helper Seam Sling", "G3", 3, "G3-A", 18.2, "C", 3.7, "1F", 3, false], ["F3319", "Thái Thị Ngọc Như", "Line 3.3", "Sewer 3.3", "G2", 2, "G2", 18.2, "A-1", 3.7, "2F", 3, false], ["F3320", "Huỳnh Thị Hồng Vân", "Preparation", "Preparation", "G2", 2, "G2", 18.2, "C", 2.9, "1F", 3, false], ["F3323", "Nguyễn Thị Ngọc Hạnh", "Line 5", "Sewer 5", "G3", 3, "G3-A", 18.2, "A-1", 4.8, "2F", 3, false], ["F3324", "Lê Thị Hạnh ", "Line 5", "Sewer 5", "G2", 2, "G2", 18.2, "A-1", 4.8, "2F", 3, false], ["F3329", "Phan Thị Nhàn", "Sample Room & I.E", "Sewer I.E", "G3", 3, "G3-A", 18.0, "F", 4.8, "1F", 2, false], ["F3338", "Huỳnh Thị Phương", "Line 22", "Sewer 22", "G3", 3, "G3-A", 17.7, "A-2", 4.2, "1F", 3, false], ["F3339", "Lê Thị Thu Thường", "PRT+EMB", "Embroider", "G3", 3, "G3-A", 17.7, "D", 4.5, "1F", 3, false], ["F3343", "Lê Thị Ngọc Dương", "Line 22", "Sewer 22", "G2", 2, "G2", 17.2, "A-2", 4.2, "1F", 3, false], ["F3344", "Lê Thị Ngọc Tuyền", "Line 22", "Sewer 22", "G2", 2, "G2", 17.2, "A-2", 4.2, "1F", 2, false], ["F3346", "Đặng Thị Tình", "Line 8", "Sewer 8", "G2", 2, "G2", 17.2, "A-1", 3.9, "2F", 3, false], ["F3347", "Nguyễn Thị Liêm", "Line 7", "Sewer 7", "G3", 3, "G3-A", 17.2, "A-1", 3.5, "2F", 3, false], ["F3354", "Đỗ Thị Hoàng Phương", "Line 7", "Sewer 7", "G2", 2, "G2", 17.2, "A-1", 3.5, "2F", 3, false], ["F3358", "Trần Thị Tường Vy", "Line 26", "Sewer 26", "G4", 4, "G4-A", 16.9, "A-2", 4.3, "1F", 3, false], ["F3372", "Huỳnh Đại Phú An", "Rivet Dept", "Rivet", "G3", 3, "G3-A", 13.6, "B", 4.4, "1F", 3, false], ["F3376", "Châu Thị Ánh Hồng", "Line 8", "Sewer 8", "G3", 3, "G3-A", 13.6, "A-1", 3.9, "2F", 3, false], ["F3377", "Đỗ Mỹ Duyên", "Line 8", "Sewer 8", "G3", 3, "G3-A", 13.6, "A-1", 3.9, "2F", 3, false], ["F3378", "Phạm Thị Trúc Đào", "Line 8", "Sewer 8", "G2", 2, "G2", 13.6, "A-1", 3.9, "2F", 3, false], ["F3379", "Nguyễn Thị Minh Nguyệt", "Supply 3", "Bartak", "G2", 2, "G2", 13.6, "B", 4.3, "2F", 3, false], ["F3382", "Nguyễn Thanh Tuấn", "Seam Sling", "Helper Seam Sling", "G3", 3, "G3-A", 13.6, "C", 3.7, "1F", 3, false], ["F3385", "Phan Văn Nhân", "QC & Packing Dept", "QC", "G2", 2, "G2", 13.5, "E", 3.8, "1F", 3, false], ["F3387", "Huỳnh Thị Thanh Nhàn", "Line 8", "Sewer 8", "G3", 3, "G3-A", 13.5, "A-1", 3.9, "2F", 3, false], ["F3388", "Hà Thị Kim Thanh", "Line 8", "Sewer 8", "G2", 2, "G2", 13.5, "A-1", 3.9, "2F", 3, false], ["F3393", "Nguyễn Thị Mai Thuỷ", "Line 6", "Sewer 6", "G3", 3, "G3-A", 13.5, "A-1", 4.6, "2F", 3, false], ["F3396", "Nguyễn Thị Ngân Hà", "QC & Packing Dept", "QC", "G2", 2, "G2", 13.4, "E", 3.8, "1F", 3, false], ["F3401", "Trần Minh Quốc Phụng", "Cutting Dept", "Helper cutting", "G3", 3, "G3-A", 13.4, "D", 4.9, "1F", 3, false], ["F3402", "Lý Lệ Giang", "QC & Packing Dept", "Packing", "G2", 2, "G2", 13.4, "E", 3.8, "1F", 3, false], ["F3410", "Bùi Phạm Ngọc Châu", "Line 2", "Sewer 2", "G3", 3, "G3-A", 13.4, "A-1", 5.7, "2F", 3, false], ["F3411", "Võ Thị Tuyết Oanh", "Line 23", "Sewer 23", "G2", 2, "G2", 13.4, "A-2", 4.6, "1F", 3, false], ["F3413", "Vũ Phạm Thị Thuỳ Trang", "Line 2", "Sewer 2", "G2", 2, "G2", 13.3, "A-1", 5.7, "2F", 3, false], ["F3414", "Nguyễn Thị Hồng Đào", "Line 23", "Sewer 23", "G2", 2, "G2", 13.3, "A-2", 4.6, "1F", 3, false], ["F3417", "Trần Thị Mỵ", "Line 7", "Sewer 7", "G2", 2, "G2", 13.3, "A-1", 3.5, "2F", 3, false], ["F3419", "Vũ Hoàng Phương Anh", "QC & Packing Dept", "QC", "G2", 2, "G2", 13.3, "E", 3.8, "1F", 3, false], ["F3422", "Quách Kiều Mén", "Line 22", "Sewer 22", "G3", 3, "G3-A", 13.3, "A-2", 4.2, "1F", 3, false], ["F3424", "Trần Thị Quỳnh Như", "Line 4", "Study sewing 4", "G2", 2, "G2", 13.2, "A-1", 4.4, "2F", 3, false], ["F3426", "Hồ Trọng Đức", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 13.2, "E", 3.8, "1F", 3, false], ["F3427", "Phạm Thị Thu Huệ", "QC & Packing Dept", "Packing", "G3", 3, "G3-A", 13.2, "E", 3.8, "1F", 3, false], ["F3429", "Nguyễn Thị Thu Hồng", "Line 22", "Sewer 22", "G2", 2, "G2", 13.2, "A-2", 4.2, "1F", 2, false], ["F3430", "Đinh Thị Minh Châu", "Line 23", "Sewer 23", "G3", 3, "G3-A", 13.2, "A-2", 4.6, "1F", 3, false], ["F3434", "Phương Ngọc Kiều", "Line 22", "Sewer 22", "G2", 2, "G2", 13.1, "A-2", 4.2, "1F", 3, false], ["F3439", "Nguyễn Ngọc Uyên Thảo", "Line 7", "Sewer 7", "G3", 3, "G3-A", 12.9, "A-1", 3.5, "2F", 3, false], ["F3441", "Trần Thị Thu Hương", "Line 6", "Sewer 6", "G2", 2, "G2", 12.9, "A-1", 4.6, "2F", 3, false], ["F3442", "Nguyễn Thị Thảo Nguyên", "Line 5", "Sewer 5", "G3", 3, "G3-A", 12.9, "A-1", 4.8, "2F", 3, false], ["F3444", "Trần Thị Hồng Phượng", "Line 7", "Sewer 7", "G2", 2, "G2", 12.8, "A-1", 3.5, "2F", 1, false], ["F3446", "Nguyễn Thị Hiên", "Divide", "Helper Divide", "G2", 2, "G2", 12.8, "D", 4.2, "1F", 3, false], ["F3452", "Vy Thị Tiến", "Line 22", "Sewer 22", "G3", 3, "G3-A", 12.7, "A-2", 4.2, "1F", 3, false], ["F3453", "Vy Thị Hà", "Line 7", "Sewer 7", "G4", 4, "G4-A", 12.7, "A-1", 3.5, "2F", 3, false], ["F3455", "Nguyễn Thị Em", "Line 8", "Sewer 8", "G3", 3, "G3-A", 12.6, "A-1", 3.9, "2F", 3, false], ["F3457", "Hà Thanh Hương", "Line 3.3", "Sewer 3.3", "G2", 2, "G2", 12.6, "A-1", 3.7, "2F", 3, false], ["F3463", "Phạm Thị Cài", "Line 26", "Sewer 26", "G3", 3, "G3-A", 12.5, "A-2", 4.3, "1F", 3, false], ["F3469", "Phạm Thị Hồng Nhung", "Line 6", "Sewer 6", "G2", 2, "G2", 12.5, "A-1", 4.6, "2F", 3, false], ["F3471", "Lê Minh Thanh", "Line 3.2", "Sewer 3.2", "G4", 4, "G4-A", 12.4, "A-1", 5.9, "2F", 2, false], ["F3475", "Đỗ Huy Thảo", "Supply 3", "Bartak", "G3", 3, "G3-A", 12.4, "B", 4.3, "2F", 3, false], ["F3476", "Nguyễn Thị Hoàng Yến", "Supply 3", "Computer", "G3", 3, "G3-A", 12.4, "B", 4.3, "2F", 3, false], ["F3477", "Vy Thị Thạch", "Line 23", "Sewer 23", "G3", 3, "G3-A", 12.3, "A-2", 4.6, "1F", 3, false], ["F3478", "Nguyễn Thị Ánh Tuyết", "Line 22", "Sewer 22", "G2", 2, "G2", 12.3, "A-2", 4.2, "1F", 3, false], ["F3483", "Võ Thị Tuyết Nhung", "QC & Packing Dept", "QC", "G2", 2, "G2", 12.2, "E", 3.8, "1F", 3, false], ["F3484", "Nguỵ Thị Kim Phương", "Line 7", "Sewer 7", "G2", 2, "G2", 12.2, "A-1", 3.5, "2F", 3, false], ["F3485", "Nguyễn Quốc Kiệt", "QC & Packing Dept", "Packing", "G2", 2, "G2", 12.0, "E", 3.8, "1F", 2, false], ["F3487", "Lê Đạt", "Warehouse Finishing", "Helper F.G", "G3", 3, "G3-A", 12.0, "E", 6.6, "1F", 3, false], ["F3488", "Hoàng Thị Thuỳ Linh", "Sample Room & I.E", "Helper Sample", "G2", 2, "G2", 12.0, "F", 4.8, "1F", 3, false], ["F3492", "Đoàn Văn Lim", "Sample Room & I.E", "Helper Sample", "G2", 2, "G2", 12.0, "F", 4.8, "1F", 3, false], ["F3497", "Lê Thị Hồng Nhung", "Line 7", "Sewer 7", "G2", 2, "G2", 12.0, "A-1", 3.5, "2F", 3, false], ["F3498", "Nguyễn Phú Đông", "QC & Packing Dept", "Packing", "G2", 2, "G2", 12.0, "E", 3.8, "1F", 3, false], ["F3500", "Nguyễn Thanh Nhàn", "Seam Sling", "Helper Seam Sling", "G3", 3, "G3-A", 12.0, "C", 3.7, "1F", 3, false], ["F3501", "Bùi Ngọc Yến Vy", "Laser", "Laser", "G2", 2, "G2", 12.0, "D", 3.6, "1F", 0.0, false], ["F3506", "Phạm Thị Mộng Kiều", "Line 3.2", "Sewer 3.2", "G2", 2, "G2", 11.5, "A-1", 5.9, "2F", 2, false], ["F3516", "Vũ Thị Hoà", "Supply 3", "Bartak", "G2", 2, "G2", 11.5, "B", 4.3, "2F", 3, false], ["F3527", "Nguyễn Văn Hon", "Preparation", "Preparation", "G2", 2, "G2", 11.3, "C", 2.9, "1F", 3, false], ["F3529", "Mai Thị Hà", "Line 3.1", "Sewer 3.1", "G2", 2, "G2", 11.3, "A-1", 3.5, "2F", 4, false], ["F3530", "Lý Thị Lỡ", "Line 7", "Sewer 7", "G2", 2, "G2", 11.3, "A-1", 3.5, "2F", 3, false], ["F3534", "Phạm Thị Mỹ Hà", "Supply 3", "Bartak", "G2", 2, "G2", 11.3, "B", 4.3, "2F", 3, false], ["F3535", "Đinh Thị Ngọc Kiều", "Supply 3", "Bartak", "G2", 2, "G2", 11.3, "B", 4.3, "2F", 3, false], ["F3536", "Ngô Tuấn Tú", "Sample Room & I.E", "Helper I.E", "G2", 2, "G2", 11.3, "F", 4.8, "1F", 3, false], ["F3540", "Nguyễn Thị Trinh Tuyền", "Line 7", "Sewer 7", "G2", 2, "G2", 11.3, "A-1", 3.5, "2F", 3, false], ["F3541", "Lỷ Sầu", "L#Part", "Helper L#Part", "G3", 3, "G3-A", 11.3, "A-2", 3.6, "1F", 3, false], ["F3543", "Lê Văn Đức", "Line 8", "Sewer 8", "G4", 4, "G4-A", 11.2, "A-1", 3.9, "2F", 3, false], ["F3546", "Chu Thị Bộ", "Line 7", "Sewer 7", "G2", 2, "G2", 11.2, "A-1", 3.5, "2F", 3, false], ["F3547", "Vi Thị Kim Liên", "Line 7", "Sewer 7", "G2", 2, "G2", 11.0, "A-1", 3.5, "2F", 3, false], ["F3548", "Huỳnh Quốc Khánh", "Line 7", "Sewer 7", "G3", 3, "G3-A", 11.0, "A-1", 3.5, "2F", 3, false], ["F3550", "Nguyễn Thị Lam", "QC & Packing Dept", "QC", "G2", 2, "G2", 10.9, "E", 3.8, "1F", 3, false], ["F3551", "Nguyễn Thị Kiều Nga", "Line 7", "Sewer 7", "G3", 3, "G3-A", 10.9, "A-1", 3.5, "2F", 3, false], ["F3558", "Mai Tấn Hưng", "Rivet Dept", "Rivet", "G3", 3, "G3-A", 10.8, "B", 4.4, "1F", 3, false], ["F3561", "Quách Thị Hằng", "Line 8", "Sewer 8", "G3", 3, "G3-A", 10.8, "A-1", 3.9, "2F", 3, false], ["F3568", "Hoàng Thị Hạnh", "Line 3.4", "Sewer 3.4", "G2", 2, "G2", 10.6, "A-1", 3.4, "2F", 3, false], ["F3570", "Đỗ Nguyên Hương", "Line 8", "Sewer 8", "G2", 2, "G2", 10.6, "A-1", 3.9, "2F", 3, false], ["F3571", "Phạm Thị Yến Loan", "Supply 3", "Bartak", "G1", 1, "G1", 10.5, "B", 4.3, "2F", 3, false], ["F3572", "Võ Thị Thảo", "QC & Packing Dept", "QC", "G2", 2, "G2", 10.5, "E", 3.8, "1F", 3, false], ["F3574", "Bùi Thị Cẩm Tuyền", "Line 2", "Sewer 2", "G3", 3, "G3-A", 10.4, "A-1", 5.7, "2F", 1, false], ["F3581", "Nguyễn Thị Trương Thanh", "Line 4", "Sewer 4", "G3", 3, "G3-A", 10.3, "A-1", 4.4, "2F", 3, false], ["F3582", "Bùi Thị Thắm", "Sample Room & I.E", "Sewer I.E", "--", 0, "--", 10.3, "F", 4.8, "1F", 3, false], ["F3584", "Nguyễn Thị Thu Thảo", "Line 6", "Sewer 6", "G3", 3, "G3-A", 10.2, "A-1", 4.6, "2F", 3, false], ["F3585", "Ngô Thị Mỹ Hạnh", "Line 7", "Study sewing 7", "G1", 1, "G1", 10.2, "A-1", 3.5, "2F", 3, false], ["F3590", "Nguyễn Thị Hải Yến", "Cleaner", "Cleaner", "G2", 2, "G2", 10.0, "C", 1.0, "1F", 3, false], ["F3591", "Nguyễn Thị Hoàng Ni", "Supply 3", "Computer", "G2", 2, "G2", 10.0, "B", 4.3, "2F", 3, false], ["F3592", "Nguyễn Thị Tuyết Vi", "QC & Packing Dept", "Packing", "G2", 2, "G2", 10.0, "E", 3.8, "1F", 3, false], ["F3594", "Nguyễn Thị Kim Phượng", "QC & Packing Dept", "Packing", "G2", 2, "G2", 10.0, "E", 3.8, "1F", 3, false], ["F3596", "Lê Thị Ngọc Trinh", "Line 2", "Study sewing 2", "G2", 2, "G2", 10.0, "A-1", 5.7, "2F", 3, false], ["F3599", "Dương Thị Hoàng Oanh", "QC & Packing Dept", "QC", "G2", 2, "G2", 10.0, "E", 3.8, "1F", 3, false], ["F3602", "Vi Thị Nhòi", "Line 28", "Sewer 28", "G2", 2, "G2", 10.0, "A-2", 4.7, "1F", 3, false], ["F3604", "Phạm Thị Thuý Kiều", "Line 7", "Sewer 7", "G2", 2, "G2", 9.9, "A-1", 3.5, "2F", 3, false], ["F3606", "Lê Kim Thuý", "Line 3.1", "Sewer 3.1", "G3", 3, "G3-A", 9.9, "A-1", 3.5, "2F", 3, false], ["F3613", "Đặng Thị Chúc Li", "Warehouse", "Helper WH", "G3", 3, "G3-A", 9.9, "C", 4.5, "1F", 0.0, false], ["F3614", "Lê Thị Mỹ Nhân", "Line 8", "Study sewing 8", "G2", 2, "G2", 9.9, "A-1", 3.9, "2F", 2, false], ["F3615", "Đoàn Thị Hồng Phương", "Line 3.1", "Sewer 3.1", "G2", 2, "G2", 9.9, "A-1", 3.5, "2F", 3, false], ["F3617", "Nguyễn Thanh Thảo", "Rivet Dept", "Rivet", "G3", 3, "G3-A", 9.8, "B", 4.4, "1F", 3, false], ["F3623", "Nguyễn Hồng Ngọc", "Line 22", "Sewer 22", "G2", 2, "G2", 9.7, "A-2", 4.2, "1F", 3, false], ["F3625", "Bùi Thị Thu Hôn", "Line 24", "Sewer 24", "G3", 3, "G3-A", 9.7, "A-2", 4.2, "1F", 3, false], ["F3626", "Dương Bích Ngọc", "Supply 3", "Bartak", "G2", 2, "G2", 9.7, "B", 4.3, "2F", 3, false], ["F3627", "Trần Thị Thanh Thảo", "Line 23", "Sewer 23", "G4", 4, "G4-A", 9.7, "A-2", 4.6, "1F", 3, false], ["F3629", "Trần Thị Kim Thu", "Line 6", "Sewer 6", "G2", 2, "G2", 9.7, "A-1", 4.6, "2F", 3, false], ["F3637", "Cao Thị Hoà", "QC & Packing Dept", "Packing", "G1", 1, "G1", 9.5, "E", 3.8, "1F", 3, false], ["F3642", "Trần Thị Kim Thảo", "Line 1", "Sewer 1", "G2", 2, "G2", 9.5, "A-1", 4.4, "2F", 3, false], ["F3645", "Nguyễn Thị Kim Thanh", "Line 6", "Sewer 6", "G2", 2, "G2", 9.5, "A-1", 4.6, "2F", 3, false], ["F3649", "Vi Thị Lý", "Line 23", "Sewer 23", "G3", 3, "G3-A", 9.4, "A-2", 4.6, "1F", 3, false], ["F3654", "Võ Thị Thu Lý", "Line 7", "Study sewing 7", "G2", 2, "G2", 9.3, "A-1", 3.5, "2F", 3, false], ["F3658", "Nguyễn Thị Thuỳ Nhung", "Line 3.3", "Sewer 3.3", "G2", 2, "G2", 9.3, "A-1", 3.7, "2F", 3, false], ["F3662", "Nguyễn Thái Sơn", "Warehouse", "Helper WH", "G2", 2, "G2", 9.0, "C", 4.5, "1F", 0.0, false], ["F3663", "Nguyễn Thị Mộng Thuỷ", "Line 7", "Study sewing 7", "G1", 1, "G1", 9.0, "A-1", 3.5, "2F", 7, false], ["F3669", "Đàm Thị Bích Hân", "Line 22", "Sewer 22", "G2", 2, "G2", 9.0, "A-2", 4.2, "1F", 3, false], ["F3670", "Mai Hoàng Yến", "Webbing Cutting", "Webbing Cutting", "G2", 2, "G2", 9.0, "D", 1.7, "1F", 3, false], ["F3672", "Nguyễn Thị Thanh Triều", "Line 26", "Vice team Leader 26", "G4", 4, "G4-A", 8.9, "A-2", 4.3, "1F", 3, false], ["F3677", "Nguyễn Yến Linh", "Line 7", "Sewer 7", "G4", 4, "G4-A", 8.8, "A-1", 3.5, "2F", 3, false], ["F3683", "Trần Ngọc Trâm", "Seam Sling", "Helper Seam Sling", "G2", 2, "G2", 8.7, "C", 3.7, "1F", 3, false], ["F3687", "Trần Thị Mỹ Nguyệt", "Manpower Hypalon", "Heat Press Hypalon", "G2", 2, "G2", 8.7, "D", 1.7, "1F", 0.0, false], ["F3689", "Trần Thị Thanh Ngân", "PRT+EMB", "Embroider", "G2", 2, "G2", 8.6, "D", 4.5, "1F", 2, false], ["F3691", "Đậu Thị Kim Sương", "Line 2", "Sewer 2", "G3", 3, "G3-A", 8.6, "A-1", 5.7, "2F", 3, false], ["F3693", "Võ Thị Mỹ Nga", "Line 7", "Sewer 7", "G2", 2, "G2", 8.5, "A-1", 3.5, "2F", 3, false], ["F3694", "Phan Thị Tuyết Thoa", "QC & Packing Dept", "QC", "G2", 2, "G2", 8.5, "E", 3.8, "1F", 3, false], ["F3698", "Nguyễn Hướng Nam", "Supply 3", "Bartak", "G3", 3, "G3-A", 8.5, "B", 4.3, "2F", 3, false], ["F3700", "Lê Thị Bích Hạnh", "Line 1", "Sewer 1", "G2", 2, "G2", 8.5, "A-1", 4.4, "2F", 3, false], ["F3701", "Vương Thị Hằng", "Line 1", "Sewer 1", "G2", 2, "G2", 8.5, "A-1", 4.4, "2F", 2, false], ["F3702", "Lê Thị Thu Thảo", "Line 26", "Sewer 26", "G2", 2, "G2", 8.5, "A-2", 4.3, "1F", 3, false], ["F3703", "Tô Văn Hồng", "Line 26", "Sewer 26", "G3", 3, "G3-A", 8.5, "A-2", 4.3, "1F", 3, false], ["F3707", "Lê Thị Châu", "Line 1", "Sewer 1", "G2", 2, "G2", 8.5, "A-1", 4.4, "2F", 3, false], ["F3714", "Đinh Kim Hà", "Line 1", "Sewer 1", "G2", 2, "G2", 8.3, "A-1", 4.4, "2F", 4, false], ["F3715", "Trần Thị Thu Thuỷ", "Supply 3", "Bartak", "G2", 2, "G2", 8.3, "B", 4.3, "2F", 3, false], ["F3716", "Trần Minh Lệ", "Line 4", "Sewer 4", "G2", 2, "G2", 8.3, "A-1", 4.4, "2F", 3, false], ["F3717", "Nguyễn Thị Tuyền", "Line 6", "Sewer 6", "G2", 2, "G2", 8.3, "A-1", 4.6, "2F", 3, false], ["F3718", "Phan Thanh Thuyền", "Line 23", "Sewer 23", "G2", 2, "G2", 8.3, "A-2", 4.6, "1F", 3, false], ["F3721", "Lê Thị Mỹ Dung", "QC & Packing Dept", "QC", "G2", 2, "G2", 8.2, "E", 3.8, "1F", 3, false], ["F3722", "Phạm Trần Anh Phước", "Supply 3", "Bartak", "G1", 1, "G1", 7.9, "B", 4.3, "2F", 3, false], ["F3725", "Lê Thị Hoàng Ngọc", "L#Part", "Sewer L#Part", "G2", 2, "G2", 7.9, "A-2", 3.6, "1F", 3, false], ["F3726", "Phạm Thị Ngọc Hằng", "Line 5", "Sewer 5", "G3", 3, "G3-A", 7.9, "A-1", 4.8, "2F", 3, false], ["F3728", "Nguyễn Thị Minh Thư", "Cutting Dept", "Helper cutting", "G2", 2, "G2", 7.9, "D", 4.9, "1F", 5, false], ["F3735", "Trần Thị Kim Yến", "Line 23", "Sewer 23", "G1", 1, "G1", 7.6, "A-2", 4.6, "1F", 3, false], ["F3737", "Trần Kim Thoa", "Sample Room & I.E", "Sewer I.E", "--", 0, "--", 7.6, "F", 4.8, "1F", 3, false], ["F3738", "Nguyễn Thị Hoa Phượng", "QC & Packing Dept", "QC", "G1", 1, "G1", 7.6, "E", 3.8, "1F", 3, false], ["F3739", "Thạch Thị Hoa", "Supply 3", "Computer", "G3", 3, "G3-A", 7.6, "B", 4.3, "2F", 3, false], ["F3742", "Huỳnh Nhã Phương", "Supply 3", "Computer", "G3", 3, "G3-A", 7.6, "B", 4.3, "2F", 3, false], ["F3743", "Huỳnh Khả Duy", "Supply 3", "Computer", "G3", 3, "G3-A", 7.6, "B", 4.3, "2F", 3, false], ["F3745", "Trương Thị Hoàng Yến", "Line 23", "Sewer 23", "G2", 2, "G2", 7.4, "A-2", 4.6, "1F", 3, false], ["F3749", "Huỳnh Thị Kim Cúc", "QC & Packing Dept", "Packing", "G1", 1, "G1", 7.4, "E", 3.8, "1F", 3, false], ["F3750", "Trương Thị Vân Anh", "PRT+EMB", "Embroider", "G3", 3, "G3-A", 7.2, "D", 4.5, "1F", 3, false], ["F3752", "Mai Thị Kim Hồng", "Sample Room & I.E", "Sewer I.E", "--", 0, "--", 6.9, "F", 4.8, "1F", 3, false], ["F3753", "Ngô Minh Tuấn", "Seam Sling", "Helper Seam Sling", "G2", 2, "G2", 6.9, "C", 3.7, "1F", 3, false], ["F3754", "Phạm Thị Diển", "Line 8", "Sewer 8", "G2", 2, "G2", 6.5, "A-1", 3.9, "2F", 3, false], ["F3755", "Phan Thị Hồng Loan", "Line 8", "Sewer 8", "G2", 2, "G2", 6.5, "A-1", 3.9, "2F", 3, false], ["F3756", "Nguyễn Thị Trinh ", "Line 8", "Sewer 8", "G2", 2, "G2", 6.5, "A-1", 3.9, "2F", 3, false], ["F3757", "Nguyễn Thị Kim Oanh", "Line 6", "Sewer 6", "G2", 2, "G2", 6.5, "A-1", 4.6, "2F", 3, false], ["F3759", "Võ Thị Noa", "Line 6", "Sewer 6", "G2", 2, "G2", 6.5, "A-1", 4.6, "2F", 3, false], ["F3760", "Lê Thị Hồng Thuý", "Line 8", "Sewer 8", "G2", 2, "G2", 6.5, "A-1", 3.9, "2F", 3, false], ["F3761", "Trần Thị Thu Hằng", "Line 8", "Sewer 8", "G2", 2, "G2", 6.5, "A-1", 3.9, "2F", 3, false], ["F3763", "Bùi Thị Hồng Hiền", "Line 22", "Sewer 22", "G2", 2, "G2", 6.4, "A-2", 4.2, "1F", 3, false], ["F3765", "Tân Thị Bích Hạnh", "Line 26", "Sewer 26", "G2", 2, "G2", 6.3, "A-2", 4.3, "1F", 3, false], ["F3766", "Trần Kim Hồng", "Line 8", "Sewer 8", "G2", 2, "G2", 6.2, "A-1", 3.9, "2F", 3, false], ["F3768", "Nguyễn Thị Nga", "Supply 3", "Bartak", "G2", 2, "G2", 6.2, "B", 4.3, "2F", 3, false], ["F3770", "Trịnh Thị Như Ngọc", "Line 21", "Sewer 21", "G3", 3, "G3-A", 6.2, "A-2", 5.3, "1F", 3, false], ["F3772", "Trần Quang Lâm", "Line 6", "Sewer 6", "G3", 3, "G3-A", 6.0, "A-1", 4.6, "2F", 3, false], ["F3774", "Hoàng Minh Thanh", "Seam Sling", "Helper Seam Sling", "G2", 2, "G2", 5.8, "C", 3.7, "1F", 3, false], ["F3775", "Nguyễn Thị Thuỳ Dương", "Line 1", "Sewer 1", "G2", 2, "G2", 5.8, "A-1", 4.4, "2F", 3, false], ["F3776", "Lăng Thị Lan", "Line 5", "Sewer 5", "G2", 2, "G2", 5.8, "A-1", 4.8, "2F", 3, false], ["F3779", "Chế Thị Thảo Uyên", "Line 7", "Sewer 7", "G2", 2, "G2", 5.7, "A-1", 3.5, "2F", 3, false], ["F3782", "Trần Thị Bảo Châu", "Line 7", "Sewer 7", "G2", 2, "G2", 5.6, "A-1", 3.5, "2F", 3, false], ["F3788", "Đoàn Thị Ngọc Ngân", "Line 3.3", "Sewer 3.3", "G2", 2, "G2", 5.3, "A-1", 3.7, "2F", 3, false], ["F3789", "Nguyễn Thị Ngọc Hạnh", "Line 6", "Sewer 6", "G1", 1, "G1", 5.3, "A-1", 4.6, "2F", 3, false], ["F3790", "Tô Thị Ngọc Hân", "Line 3.4", "Sewer 3.4", "G2", 2, "G2", 5.2, "A-1", 3.4, "2F", 3, false], ["F3793", "Lê Thị Hương", "Line 4", "Sewer 4", "G2", 2, "G2", 4.4, "A-1", 4.4, "2F", 3, false], ["F3794", "Cù Thị Kim Thịnh", "Line 4", "Sewer 4", "G2", 2, "G2", 4.4, "A-1", 4.4, "2F", 3, false], ["F3795", "Ngô Viết Hài", "Line 21", "Sewer 21", "G4", 4, "G4-A", 4.3, "A-2", 5.3, "1F", 3, false], ["F3797", "Hoàng Thị Quỳnh Chi", "Line 4", "Sewer 4", "G2", 2, "G2", 3.9, "A-1", 4.4, "2F", 3, false], ["F3800", "Trương Nguyễn Hạnh Trân", "Line 3.1", "Sewer 3.1", "G2", 2, "G2", 3.3, "A-1", 3.5, "2F", 3, false], ["F3801", "Nguyễn Huỳnh Thu Thảo", "Cutting Dept", "Helper cutting", "G2", 2, "G2", 3.3, "D", 4.9, "1F", 3, false], ["F3802", "Trịnh Thị Thu Trâm", "Line 3.3", "Sewer 3.3", "G2", 2, "G2", 3.3, "A-1", 3.7, "2F", 3, false], ["F3803", "Nguyễn Thị Trà My", "Warehouse", "Helper WH", "G3", 3, "G3-A", 2.8, "C", 4.5, "1F", 3, false], ["F3804", "Dương Thị Thuỳ Trang", "Line 3.1", "Sewer 3.1", "G2", 2, "G2", 2.8, "A-1", 3.5, "2F", 3, false], ["F3805", "Nguyễn Thị Kim Ngân", "Line 3.4", "Sewer 3.4", "G1", 1, "G1", 2.8, "A-1", 3.4, "2F", 0.0, false], ["F3806", "Nguyễn Thị Tuyết Ly", "Supply 3", "Bartak", "G1", 1, "G1", 2.8, "B", 4.3, "2F", 3, false], ["F3807", "Phan Vũ Thị Mai Linh", "Supply 3", "Bartak", "G2", 2, "G2", 2.8, "B", 4.3, "2F", 3, false], ["F3811", "Đinh Xuân Trường", "Warehouse", "Helper WH", "G1", 1, "G1", 2.4, "C", 4.5, "1F", 0.0, false], ["F3812", "Hoàng Trần Khánh Linh", "Warehouse", "Helper WH", "G3", 3, "G3-A", 2.4, "C", 4.5, "1F", 3, false], ["F3813", "Lê Thị Mỹ Chi", "Line 3.4", "Sewer 3.4", "G1", 1, "G1", 2.4, "A-1", 3.4, "2F", 0.0, false], ["F3816", "Hoàng Phi Long", "Warehouse", "Helper WH", "G2", 2, "G2", 2.3, "C", 4.5, "1F", 3, false], ["F3817", "Chu Thị Thu Hương", "Line 8", "Sewer 8", "G3", 3, "G3-A", 1.0, "A-1", 3.9, "2F", 3, false], ["F3818", "Huỳnh Trung Tiến", "QC & Packing Dept", "Packing", "G1", 1, "G1", 1.0, "E", 3.8, "1F", 3, false], ["F3819", "Lê Nguyễn Phương Thư", "QC & Packing Dept", "Packing", "G1", 1, "G1", 1.0, "E", 3.8, "1F", 3, false], ["F3820", "Võ Văn Bảo Thành", "Supply 3", "Bartak", "G2", 2, "G2", 1.0, "B", 4.3, "2F", 3, false], ["F3821", "Nguyễn Thành Hải", "Supply 3", "Bartak", "G2", 2, "G2", 1.0, "B", 4.3, "2F", 3, false], ["F3822", "Nguyễn Thị Ngọc Tuyết", "Sample Room & I.E", "Sewer I.E", "--", 0, "--", 1.0, "F", 4.8, "1F", 3, false], ["F3825", "Lê Thị Mỹ Châu", "Line 4", "Sewer 4", "G2", 2, "G2", 1.0, "A-1", 4.4, "2F", 3, false], ["F3826", "Phạm Trần Ngọc Trân", "Seam Sling", "Helper Seam Sling", "G2", 2, "G2", 1.0, "C", 3.7, "1F", 1, false], ["F3827", "Lê Thị Ngọc Tuyền", "QC & Packing Dept", "Packing", "G1", 1, "G1", 0.9, "E", 3.8, "1F", 3, false], ["F3829", "Nguyễn Thị Phương Anh", "Line 6.2", "Sewer 6.2", "G2", 2, "G2", 0.9, "A-1", 1.7, "2F", 3, false], ["F3830", "Huỳnh Thảo Duyên", "Line 8", "Sewer 8", "G2", 2, "G2", 0.9, "A-1", 3.9, "2F", 3, false], ["F3831", "Võ Bích Thuỷ", "Line 8", "Sewer 8", "G2", 2, "G2", 0.9, "A-1", 3.9, "2F", 3, false], ["F3832", "Nguyễn Thị Thiên Thanh", "Line 6.2", "Sewer 6.2", "G2", 2, "G2", 0.9, "A-1", 1.7, "2F", 3, false], ["F3833", "Thái Thị Hải", "Supply 3", "Bartak", "G2", 2, "G2", 0.9, "B", 4.3, "2F", 3, false], ["F3835", "Mai Huy", "Warehouse", "Helper WH", "G2", 2, "G2", 0.9, "C", 4.5, "1F", 3, false], ["F3836", "Vũ Thị Diễm", "Line 8", "Sewer 8", "G2", 2, "G2", 0.8, "A-1", 3.9, "2F", 3, false], ["F3837", "Huỳnh Thị Kim Yến", "Supply 3", "Bartak", "G2", 2, "G2", 0.8, "B", 4.3, "2F", 3, false], ["F3840", "Nguyễn Hoàng Sơn", "QC & Packing Dept", "QC", "G2", 2, "G2", 0.7, "E", 3.8, "1F", 2, false], ["F3841", "Nguyễn Võ Hương Giang", "Seam Sling", "Helper Seam Sling", "G2", 2, "G2", 0.7, "C", 3.7, "1F", 3, false], ["F3842", "Hà Mộng Thanh Thuỳ", "Seam Sling", "Helper Seam Sling", "G2", 2, "G2", 0.7, "C", 3.7, "1F", 3, false], ["F3843", "Vi Thị Cẩm Duy", "Line 8", "Sewer 8", "G2", 2, "G2", 0.7, "A-1", 3.9, "2F", 3, false], ["F3844", "Nguyễn Thị Ngọc Ánh", "Line 8", "Sewer 8", "G2", 2, "G2", 0.7, "A-1", 3.9, "2F", 3, false], ["F3848", "Lê Thị Vân", "QC & Packing Dept", "Packing", "G1", 1, "G1", 0.7, "E", 3.8, "1F", 3, false], ["F3849", "Nguyễn Lê Yến Vy", "QC & Packing Dept", "Packing", "G1", 1, "G1", 0.7, "E", 3.8, "1F", 3, false], ["F3852", "Phạm Thị Dưỡng", "Rivet Dept", "Rivet", "G2", 2, "G2", 0.7, "B", 4.4, "1F", 3, false], ["F3853", "Nguyễn Thị Thanh Trúc", "QC & Packing Dept", "QC", "G1", 1, "G1", 0.5, "E", 3.8, "1F", 2, false], ["F3857", "Nguyễn Công Tấn", "Warehouse", "Helper WH", "G2", 2, "G2", 0.5, "C", 4.5, "1F", 2, false], ["F3858", "Đỗ Thị Kiều Hương", "Line 6.2", "Sewer 6.2", "G2", 2, "G2", 0.5, "A-1", 1.7, "2F", 2, false], ["F3859", "Trương Ngọc Hoài Ly", "PRT+EMB", "Embroider", "G2", 2, "G2", 0.5, "D", 4.5, "1F", 2, false], ["F3860", "Nguyễn Ngọc Trà", "QC & Packing Dept", "Packing", "G1", 1, "G1", 0.5, "E", 3.8, "1F", 1, false], ["F3862", "Nguyễn Đình Khoa", "Rivet Dept", "Rivet", "G2", 2, "G2", 0.5, "B", 4.4, "1F", 2, false], ["F3864", "Lê Ngọc Nhẫn", "Line 25", "Sewer 25", "G2", 2, "G2", 0.5, "A-2", 3.9, "1F", 2, false], ["F3867", "Dương Thị Thão", "Line 4", "Sewer 4", "G2", 2, "G2", 0.5, "A-1", 4.4, "2F", 2, false], ["F3868", "Đinh Thị Lan", "Line 25", "Sewer 25", "G2", 2, "G2", 0.5, "A-2", 3.9, "1F", 1, false], ["F3869", "Nguyễn Thanh Hoàng", "Warehouse", "Helper WH", "G2", 2, "G2", 0.4, "C", 4.5, "1F", 2, false], ["F3870", "Lê Nguyễn Thuý Vi", "Line 25", "Sewer 25", "G2", 2, "G2", 0.4, "A-2", 3.9, "1F", 1, false], ["F3871", "Võ Hoàng Huyền", "Warehouse", "Helper WH", "G3", 3, "G3-A", 0.4, "C", 4.5, "1F", 2, false], ["F3872", "Vi Thuý Kiều", "QC & Packing Dept", "QC", "G1", 1, "G1", 0.4, "E", 3.8, "1F", 2, false], ["F3873", "Lâm Thuý Lẩm", "QC & Packing Dept", "QC", "G1", 1, "G1", 0.4, "E", 3.8, "1F", 1, false], ["F3874", "Nguyễn Minh Trường", "Warehouse", "Helper WH", "G3", 3, "G3-A", 0.3, "C", 4.5, "1F", 2, false], ["F3875", "Phan Công Hạng", "Warehouse", "Helper WH", "G3", 3, "G3-A", 0.3, "C", 4.5, "1F", 2, false], ["F3876", "Vũ Thị Bưởi", "Line 28", "Sewer 28", "G2", 2, "G2", 0.3, "A-2", 4.7, "1F", 2, false], ["F3877", "Rcăm H' Ngân", "Line 28", "Sewer 28", "G2", 2, "G2", 0.3, "A-2", 4.7, "1F", 2, false], ["F3878", "Huỳnh Phước An", "Line 25", "Sewer 25", "G1", 1, "G1", 0.3, "A-2", 3.9, "1F", 2, false], ["F3879", "Đỗ Thị Huyền Hảo", "Line 25", "Sewer 25", "G2", 2, "G2", 0.3, "A-2", 3.9, "1F", 2, false], ["F3880", "Trương Thị Vân", "Line 28", "Sewer 28", "G2", 2, "G2", 0.2, "A-2", 4.7, "1F", 2, false], ["F3881", "Trương Khải Phong", "Line 28", "Sewer 28", "G2", 2, "G2", 0.2, "A-2", 4.7, "1F", 2, false], ["F3882", "Lê Thị Ái Như", "QC & Packing Dept", "QC", "G1", 1, "G1", 0.2, "E", 3.8, "1F", 0.0, false], ["F3883", "Phạm Thị Kim Ngân", "Line 22", "Sewer 22", "G1", 1, "G1", 0.0, "A-2", 4.2, "1F", 1, false], ["F3884", "Lê Văn Chung", "Line 8", "Study sewing 8", "G1", 1, "G1", 0.0, "A-1", 3.9, "2F", 0.0, false], ["F3885", "Huỳnh Hửu Nghĩa", "Cutting Dept", "Helper cutting", "G2", 2, "G2", 0.0, "D", 4.9, "1F", 1, false], ["F3886", "Nguyễn Viết Cường", "Cutting Dept", "Helper cutting", "G2", 2, "G2", 0.0, "D", 4.9, "1F", 1, false], ["F3887", "Đỗ Thị Đào", "Line 21", "Sewer 21", "G2", 2, "G2", 0.0, "A-2", 5.3, "1F", 1, false], ["F3888", "Bùi Thị Ánh Tiên", "Supply 3", "Bartak", "G1", 1, "G1", 0.0, "B", 4.3, "2F", 1, false], ["F3889", "Huỳnh Thị Linh", "Line 3.4", "Sewer 3.4", "G2", 2, "G2", 0.0, "A-1", 3.4, "2F", 1, false], ["F3890", "Nguyễn Thị Lan", "Line 3.1", "Sewer 3.1", "G1", 1, "G1", 0.0, "A-1", 3.5, "2F", 1, false], ["F3891", "Trần Thị Hiền", "Line 26", "Sewer 26", "G2", 2, "G2", 0.0, "A-2", 4.3, "1F", 1, false], ["F3892", "Nguyễn Thị Mỹ Hằng", "Line 3.4", "Sewer 3.4", "G2", 2, "G2", 0.0, "A-1", 3.4, "2F", 0.0, false], ["F3893", "Mai Văn Thừa", "Line 6.2", "Study sewing 6.2", "G2", 2, "G2", -0.0, "A-1", 1.7, "2F", 1, false], ["F3894", "Nguyễn Thị Thanh Vy", "Line 23", "Sewer 23", "G3", 3, "G3-A", -0.0, "A-2", 4.6, "1F", 1, false], ["F3895", "Phan Thị Ngân", "Line 24", "Sewer 24", "G2", 2, "G2", -0.0, "A-2", 4.2, "1F", 1, false], ["F3896", "Phùng Thị Thúy ", "Line 25", "Sewer 25", "G2", 2, "G2", -0.0, "A-2", 3.9, "1F", 1, false], ["F3897", "Nguyễn Văn Đoản", "QC & Packing Dept", "Packing", "G1", 1, "G1", -0.0, "E", 3.8, "1F", 1, false], ["F3898", "Lê Thị Hoàng ", "Line 22", "Sewer 22", "G1", 1, "G1", -0.1, "A-2", 4.2, "1F", 1, false], ["F3899", "Nguyễn Thị Ánh Như", "Line 22", "Sewer 22", "G2", 2, "G2", -0.1, "A-2", 4.2, "1F", 1, false], ["F3900", "Nguyễn Thị Thành", "Line 3.2", "Sewer 3.2", "G2", 2, "G2", -0.2, "A-1", 5.9, "2F", 1, false], ["F3901", "Võ Thị Kim Phượng", "Line 21", "Sewer 21", "G1", 1, "G1", -0.2, "A-2", 5.3, "1F", 1, false], ["F3902", "Nguyễn Thị Thanh Huệ", "Line 22", "Sewer 22", "G1", 1, "G1", -0.2, "A-2", 4.2, "1F", 0.0, false], ["F3903", "Võ Thị Ngọc Phi", "QC & Packing Dept", "QC", "G1", 1, "G1", -0.2, "E", 3.8, "1F", 1, false], ["F3904", "Đoàn Thị Thúy Kiều", "Line 28", "Sewer 28", "G2", 2, "G2", -0.2, "A-2", 4.7, "1F", 1, false], ["F3905", "Nguyễn Thị Út Ngân", "Line 28", "Sewer 28", "G2", 2, "G2", -0.2, "A-2", 4.7, "1F", 0.0, false], ["F3907", "Nguyễn Văn Thuần", "Rivet Dept", "Rivet", "G2", 2, "G2", -0.2, "B", 4.4, "1F", 1, false], ["F3908", "Nguyễn Văn Thảo", "Rivet Dept", "Rivet", "G2", 2, "G2", -0.2, "B", 4.4, "1F", 1, false], ["F3910", "Nguyễn Trung Hiếu", "QC & Packing Dept", "Packing", "G1", 1, "G1", -0.2, "E", 3.8, "1F", 0.0, false], ["F3911", "Võ Thị Ngọc Diệu", "Line 28", "Sewer 28", "G2", 2, "G2", -0.3, "A-2", 4.7, "1F", 1, false], ["F3912", "Lê Đình Quốc", "QC & Packing Dept", "Packing", "G1", 1, "G1", -0.3, "E", 3.8, "1F", 0.0, false], ["F3913", "Nguyễn Thị Hồng Thanh", "Line 28", "Sewer 28", "G2", 2, "G2", -0.4, "A-2", 4.7, "1F", 0.0, false], ["F3914", "Đỗ Thị Minh Hiếu", "Line 28", "Sewer 28", "G1", 1, "G1", -0.4, "A-2", 4.7, "1F", 0.0, false], ["F3915", "Nguyễn Thành Tài", "QC & Packing Dept", "Packing", "G1", 1, "G1", -0.4, "E", 3.8, "1F", 0.0, false], ["F3916", "Lê Văn Minh", "Line 8", "Sewer 8", "G3", 3, "G3-A", -0.5, "A-1", 3.9, "2F", 0.0, false], ["F3921", "Lê Tấn Triều", "QC & Packing Dept", "Packing", "G1", 1, "G1", -0.6, "E", 3.8, "1F", 0.0, false], ["F3922", "Hồ Đồng Quỳnh Hương", "QC & Packing Dept", "QC", "G1", 1, "G1", -0.7, "E", 3.8, "1F", 0.0, false], ["F3923", "Huỳnh Thị Thúy Minh", "Line 1", "Sewer 1", "G1", 1, "G1", -0.7, "A-1", 4.4, "2F", 0.0, false], ["F3924", "Lạc Thị Quyền", "Line 1", "Sewer 1", "G2", 2, "G2", -0.7, "A-1", 4.4, "2F", 0.0, false], ["F3925", "Đồng Thị Tuyết Vân", "Shoulder line", "Study sewing Shoulder line", "G1", 1, "G1", -0.7, "A-1", 1.0, "2F", 0.0, false], ["F3926", "Nguyễn Thị Thanh Diệu", "Shoulder line", "Sewer Shoulder line", "G1", 1, "G1", -0.7, "A-1", 1.0, "2F", 0.0, false], ["F3927", "Lê Thị Biên", "Line 4", "Sewer 4", "G2", 2, "G2", -0.7, "A-1", 4.4, "2F", 0.0, false], ["F3928", "Nguyễn Thị Thắm", "Line 1", "Sewer 1", "G2", 2, "G2", -0.7, "A-1", 4.4, "2F", 0.0, false], ["F3929", "Dương Thị Hà", "Line 25", "Sewer 25", "G2", 2, "G2", -0.7, "A-2", 3.9, "1F", 0.0, false]];
+
+// ─── PROCESS META ────────────────────────────────────────────────────────────
+const PROCESS_INFO = {
+  "Line 1":{"group":"A-1","score":4.4,"floor":"2F"},"Line 2":{"group":"A-1","score":5.7,"floor":"2F"},
+  "Line 3.1":{"group":"A-1","score":3.5,"floor":"2F"},"Line 3.2":{"group":"A-1","score":5.9,"floor":"2F"},
+  "Line 3.3":{"group":"A-1","score":3.7,"floor":"2F"},"Line 3.4":{"group":"A-1","score":3.4,"floor":"2F"},
+  "Line 4":{"group":"A-1","score":4.4,"floor":"2F"},"Line 5":{"group":"A-1","score":4.8,"floor":"2F"},
+  "Line 6":{"group":"A-1","score":4.6,"floor":"2F"},"Line 6.2":{"group":"A-1","score":1.7,"floor":"2F"},
+  "Line 7":{"group":"A-1","score":3.5,"floor":"2F"},"Line 8":{"group":"A-1","score":3.9,"floor":"2F"},
+  "Shoulder line":{"group":"A-1","score":1.0,"floor":"2F"},
+  "Line 21":{"group":"A-2","score":5.3,"floor":"1F"},"Line 22":{"group":"A-2","score":4.2,"floor":"1F"},
+  "Line 23":{"group":"A-2","score":4.6,"floor":"1F"},"Line 24":{"group":"A-2","score":4.2,"floor":"1F"},
+  "Line 25":{"group":"A-2","score":3.9,"floor":"1F"},"Line 26":{"group":"A-2","score":4.3,"floor":"1F"},
+  "Line 27":{"group":"A-2","score":5.6,"floor":"1F"},"Line 28":{"group":"A-2","score":4.7,"floor":"1F"},
+  "L#Part":{"group":"A-2","score":3.6,"floor":"1F"},
+  "Supply 3":{"group":"B","score":4.3,"floor":"2F"},"Rivet Dept":{"group":"B","score":4.4,"floor":"1F"},
+  "Preparation":{"group":"C","score":2.9,"floor":"1F"},"Seam Sling":{"group":"C","score":3.7,"floor":"1F"},
+  "Warehouse":{"group":"C","score":4.5,"floor":"1F"},"Cleaner":{"group":"C","score":1.0,"floor":"1F"},
+  "Cutting Dept":{"group":"D","score":4.9,"floor":"1F"},"Laser":{"group":"D","score":3.6,"floor":"1F"},
+  "Webbing Cutting":{"group":"D","score":1.7,"floor":"1F"},"Divide":{"group":"D","score":4.2,"floor":"1F"},
+  "PRT+EMB":{"group":"D","score":4.5,"floor":"1F"},"Manpower Hypalon":{"group":"D","score":1.7,"floor":"1F"},
+  "QC & Packing Dept":{"group":"E","score":3.8,"floor":"1F"},
+  "Warehouse Finishing":{"group":"E","score":6.6,"floor":"1F"},
+  "Sample Room & I.E":{"group":"F","score":4.8,"floor":"1F"},
+  "Maintenance":{"group":"F","score":10.0,"floor":"1F"},
+  "Electricity":{"group":"F","score":5.0,"floor":"1F"},
+};
+const UPSTREAM = {
+  "Cutting Dept":1.0,"Laser":0.9,"Webbing Cutting":0.8,"Divide":0.8,
+  "PRT+EMB":0.8,"Manpower Hypalon":0.6,"Preparation":0.7,"Supply 3":0.6,"Rivet Dept":0.5,
+};
+// 전체 공정 결근율 (파일6 3-4월 기준, F그룹·소규모 0% 제외)
+const ALL_ABS_RATES = {"Cleaner":5.77,"Cutting Dept":5.53,"Divide":5.49,"L#Part":5.56,"Laser":3.85,"Line 1":5.35,"Line 2":5.49,"Line 21":5.41,"Line 22":5.20,"Line 23":5.30,"Line 24":5.69,"Line 25":4.38,"Line 26":5.53,"Line 27":5.77,"Line 28":4.86,"Line 3.1":5.70,"Line 3.2":5.15,"Line 3.3":5.95,"Line 3.4":4.97,"Line 4":5.68,"Line 5":5.66,"Line 6":5.66,"Line 6.2":4.33,"Line 7":5.84,"Line 8":5.55,"Manpower Hypalon":0.0,"PRT+EMB":5.29,"Preparation":5.77,"QC & Packing Dept":5.18,"Rivet Dept":5.20,"Sample Room & I.E":5.26,"Seam Sling":5.33,"Shoulder line":0.0,"Supply 3":5.68,"Warehouse":4.35,"Warehouse Finishing":5.77,"Webbing Cutting":3.85};
+// 결근율이 의미있는 공정만 (n>=3, 0% 제외)
+const LINE_ABS_RATES = Object.fromEntries(Object.entries(ALL_ABS_RATES).filter(([,r])=>r>0));
+
+const GROUP_COLOR = {
+  "A-1":["#E1F5EE","#085041"],"A-2":["#9FE1CB","#085041"],
+  "B":["#EEEDFE","#3C3489"],"C":["#FAEEDA","#633806"],
+  "D":["#FCEBEB","#791F1F"],"E":["#E6F1FB","#0C447C"],"F":["#F1EFE8","#444441"],
+};
+const GRADE_COLOR = {G5:"#f59e0b",G4:"#60a5fa",G3:"#34d399",G2:"#a78bfa",G1:"#f87171","--":"#6b7280"};
+
+// ─── BUILD WORKERS (1 entry per employee, mapped to their dept) ───────────────
+const WORKERS = RAW_DATA.map(d => ({
+  id:d[0], name:d[1], dept:d[2], position:d[3],
+  grade:d[4], gradeNum:d[5], subLevel:d[6],
+  tenure:d[7], group:d[8], processScore:d[9],
+  floor:d[10], absentDays:d[11],
+})); // F코드(생산직) + OR코드(관리자) 포함, 동일 방식으로 매칭
+
+// dept → 인원 수 (소규모 공정 보호용)
+const DEPT_HEADCOUNT = WORKERS.reduce((acc,w) => { acc[w.dept]=(acc[w.dept]||0)+1; return acc; }, {});
+
+// ─── MATCHING ALGORITHM ────────────────────────────────────────────────────────
+function computeScore(absent, candidate) {
+  if (candidate.dept === absent.dept) return -1;
+  if (candidate.group !== absent.group) return 5; // 그룹 불일치: 긴급시만(5점)
+  let score = 40; // ① 도메인 일치
+
+  // ② G레벨 적합성 (25점)
+  const diff = candidate.gradeNum - absent.gradeNum;
+  if (diff === 0) score += 25;
+  else if (diff === 1) score += 20;
+  else if (diff === -1) score += 12;
+  else if (Math.abs(diff) === 2) score -= 5;
+  else return 3;
+
+  // 핵심 공정(score≥5.0): 하위 레벨 투입 시 상한 캡
+  if (absent.processScore >= 5.0 && candidate.gradeNum < absent.gradeNum) score = Math.min(score, 5);
+  // 저난이도(score<3.0): 과잉 투입 페널티
+  if (absent.processScore < 3.0 && (candidate.gradeNum - absent.gradeNum) > 1) score -= 15;
+
+  // ③ 공정 중요도 제약 (15점)
+  if (candidate.processScore <= absent.processScore) score += 15;
+  else score -= Math.round((candidate.processScore - absent.processScore) * 3);
+
+  // ④ 같은 층 보너스 (10점, A-1/A-2 그룹만)
+  if ((absent.group === "A-1" || absent.group === "A-2") && candidate.floor === absent.floor) score += 10;
+
+  // ⑤ 서브레벨 보너스 (10점)
+  score += {"G3-B":5,"G3-C":8,"G4-B":15,"G4-C":12}[candidate.subLevel] || 0;
+
+  // ⑥ 소규모 공정 차출 페널티 (-20점)
+  if ((DEPT_HEADCOUNT[candidate.dept] || 1) <= 10) score -= 20;
+
+  return Math.max(score, 0);
+}
+
+// 복수 결근 동시 처리
+function batchMatch(absentIds, allWorkers) {
+  const absentList = allWorkers.filter(w => absentIds.has(w.id));
+  const sorted = [...absentList].sort((a,b) => b.processScore - a.processScore);
+  const assigned = new Set(absentIds);
+  const result = {};
+  sorted.forEach(absent => {
+    const candidates = allWorkers
+      .filter(w => !assigned.has(w.id))
+      .map(w => {
+        const sc = computeScore(absent, w);
+        const deptN = DEPT_HEADCOUNT[w.dept] || 1;
+        const impactPct = Math.round(1/deptN*100);
+        return {...w, matchScore:sc, impactPct, impactWarn: impactPct >= 20};
+      })
+      .filter(w => w.matchScore > 0)
+      .sort((a,b) => b.matchScore - a.matchScore)
+      .slice(0, 3);
+    result[absent.id] = candidates;
+    if (candidates[0]) assigned.add(candidates[0].id);
+  });
+  return result;
+}
+
+// ─── HR 시스템 계산 ────────────────────────────────────────────────────────────
+function computeRiskScores(workers = WORKERS, absenceRates = LINE_ABS_RATES) {
+  // workers에서 부서별 인원수 집계
+  const deptN = {}, deptGroup = {}, deptScore = {};
+  workers.forEach(w => {
+    deptN[w.dept] = (deptN[w.dept]||0) + 1;
+    deptGroup[w.dept] = w.group;
+    deptScore[w.dept] = w.processScore;
+  });
+  // absenceRates (부서별 결근율 %)를 직접 사용
+  return Object.entries(absenceRates)
+    .filter(([dept]) => PROCESS_INFO[dept] && PROCESS_INFO[dept].group !== "F")
+    .map(([dept, absRate]) => {
+      const n = deptN[dept]||0;
+      const group = deptGroup[dept]||PROCESS_INFO[dept]?.group||"?";
+      const score = deptScore[dept]||PROCESS_INFO[dept]?.score||0;
+      const up = UPSTREAM[dept] ?? 0.3;
+      const risk = absRate/10*0.40 + score/10*0.35 + up*0.25;
+      return {dept, group, score, headcount:n,
+              absRate:+absRate.toFixed(2), riskScore:+(risk*100).toFixed(1)};
+    })
+    .sort((a,b) => b.riskScore - a.riskScore);
+}
+
+function computeChronicAbsentees(workers = WORKERS, workerAbsMap = {}) {
+  // workerAbsMap이 비어있으면 WORKERS 내장 absentDays 사용
+  const hasMap = Object.keys(workerAbsMap).length > 0;
+  return workers
+    .map(w => {
+      const days = hasMap ? (workerAbsMap[w.id]||0) : w.absentDays;
+      return {...w, absentDays: days};
+    })
+    .filter(w => w.absentDays >= 8)
+    .map(w => ({...w, flag: w.gradeNum >= 4 ? "burnout" : "turnover"}))
+    .sort((a,b) => b.absentDays - a.absentDays);
+}
+
+function getLineStatus(rate) {
+  if (rate >= 6.5) return "danger";
+  if (rate >= 5.5) return "warning";
+  return "good";
+}
+
+// ─── SIDEBAR DEPT 목록 ─────────────────────────────────────────────────────────
+const lineSort = s => { if(s==="Shoulder line") return 99; const m=s.match(/\d+(\.\d+)?/); return m?parseFloat(m[0]):999; };
+const ALL_DEPTS = [...new Set(WORKERS.map(w=>w.dept))].sort((a,b)=>lineSort(a)-lineSort(b));
+const SEWING_2F = ALL_DEPTS.filter(d => PROCESS_INFO[d]?.group === "A-1");
+const SEWING_1F = ALL_DEPTS.filter(d => PROCESS_INFO[d]?.group === "A-2");
+const OTHER_DEPTS = ALL_DEPTS.filter(d => PROCESS_INFO[d] && !["A-1","A-2"].includes(PROCESS_INFO[d].group));
+
+// ─── 소형 컴포넌트 ─────────────────────────────────────────────────────────────
+const GradeChip = ({grade,sub}) => (
+  <span style={{fontSize:10,fontWeight:700,padding:"1px 5px",borderRadius:3,
+    background:`${GRADE_COLOR[grade]||"#6b7280"}22`,color:GRADE_COLOR[grade]||"#6b7280",
+    border:`1px solid ${GRADE_COLOR[grade]||"#6b7280"}44`}}>
+    {sub&&sub!==grade?sub:grade}
+  </span>
+);
+const GroupChip = ({group}) => {
+  const [bg,col]=GROUP_COLOR[group]||["#eee","#333"];
+  return <span style={{fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:3,background:bg,color:col}}>{group}</span>;
+};
+const ScoreBar = ({score,color="#34d399"}) => (
+  <div style={{display:"flex",alignItems:"center",gap:6}}>
+    <div style={{flex:1,height:4,background:"#ffffff18",borderRadius:2,overflow:"hidden"}}>
+      <div style={{width:`${score}%`,height:"100%",background:color,borderRadius:2}}/>
+    </div>
+    <span style={{fontSize:10,color:"#8b949e",width:24,textAlign:"right"}}>{score}</span>
+  </div>
+);
+
+// ─── MATCHING DASHBOARD ────────────────────────────────────────────────────────
+function MatchingDashboard({ workers: ACTIVE_WORKERS = WORKERS, onAbsentChange }) {
+  const [selectedDept, setSelectedDept] = useState("Line 1");
+  const [absentIds, setAbsentIds] = useState(new Set());
+  const [matchResults, setMatchResults] = useState({});
+  const [focusId, setFocusId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResult, setSearchResult] = useState(null); // null=초기, worker=찾음, "none"=없음
+
+  const handleSearch = (q) => {
+    const query = q.trim().toUpperCase();
+    setSearchQuery(q);
+    if (!query) { setSearchResult(null); return; }
+    const found = ACTIVE_WORKERS.find(w => w.id.toUpperCase() === query);
+    if (found) {
+      setSearchResult(found);
+      setSelectedDept(found.dept);
+      setFocusId(null);
+      // 해당 직원 카드가 화면에 보이도록 스크롤 (setTimeout으로 렌더 후 실행)
+      setTimeout(() => {
+        const el = document.getElementById("worker-card-" + found.id);
+        if (el) el.scrollIntoView({behavior:"smooth", block:"center"});
+      }, 100);
+    } else {
+      setSearchResult("none");
+    }
+  };
+
+  const deptWorkers = useMemo(() => ACTIVE_WORKERS.filter(w => w.dept === selectedDept), [selectedDept, ACTIVE_WORKERS]);
+  const pi = PROCESS_INFO[selectedDept];
+
+  const toggleAbsent = useCallback((id) => {
+    setAbsentIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); if(focusId===id) setFocusId(null); }
+      else next.add(id);
+      setMatchResults(batchMatch(next, ACTIVE_WORKERS));
+      if (onAbsentChange) onAbsentChange(next); // CSV 추출용 ref 동기화
+      return next;
+    });
+  }, [focusId, ACTIVE_WORKERS, onAbsentChange]);
+
+  const absentInDept = [...absentIds].filter(id => ACTIVE_WORKERS.find(w=>w.id===id&&w.dept===selectedDept));
+
+  // 동적 사이드바: 업로드된 데이터의 실제 부서 목록
+  const activeDepts = useMemo(()=>[...new Set(ACTIVE_WORKERS.map(w=>w.dept))].sort((a,b)=>lineSort(a)-lineSort(b)),[ACTIVE_WORKERS]);
+  const activeSewing2F = activeDepts.filter(d=>PROCESS_INFO[d]?.group==="A-1");
+  const activeSewing1F = activeDepts.filter(d=>PROCESS_INFO[d]?.group==="A-2");
+  const activeOther = activeDepts.filter(d=>PROCESS_INFO[d]&&!["A-1","A-2"].includes(PROCESS_INFO[d].group));
+
+  return (
+    <div style={{display:"flex",flex:1,overflow:"hidden",minHeight:0}}>
+      {/* SIDEBAR */}
+      <div style={{width:190,background:"#0d1117",borderRight:"1px solid #21262d",display:"flex",flexDirection:"column",flexShrink:0}}>
+        {/* 사번 검색창 */}
+        <div style={{padding:"10px 10px 6px",borderBottom:"1px solid #21262d",flexShrink:0}}>
+          <div style={{position:"relative"}}>
+            <input
+              type="text"
+              placeholder="사번 검색 (예: F0171)"
+              value={searchQuery}
+              onChange={e=>handleSearch(e.target.value)}
+              style={{width:"100%",background:"#161b22",border:"1px solid #30363d",borderRadius:5,
+                padding:"5px 28px 5px 8px",fontSize:10,color:"#e6edf3",outline:"none",boxSizing:"border-box"}}
+            />
+            {searchQuery && (
+              <button onClick={()=>{setSearchQuery("");setSearchResult(null);}}
+                style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",
+                  background:"none",border:"none",color:"#6e7681",cursor:"pointer",fontSize:12,lineHeight:1}}>×</button>
+            )}
+          </div>
+          {searchResult==="none" && (
+            <div style={{marginTop:5,fontSize:9,color:"#f87171",lineHeight:1.4}}>
+              해당 사번을 가진 직원은 없습니다.
+            </div>
+          )}
+          {searchResult && searchResult !== "none" && (
+            <div style={{marginTop:5,fontSize:9,color:"#34d399",lineHeight:1.6}}>
+              ✓ {searchResult.name}<br/>
+              <span style={{color:"#6e7681"}}>{searchResult.dept}</span>
+            </div>
+          )}
+        </div>
+        {/* 부서 목록 */}
+        <div style={{overflowY:"auto",flex:1}}>
+        {[["2층 봉제 (A-1)",activeSewing2F],["1층 봉제 (A-2)",activeSewing1F],["기타 공정",activeOther]].map(([label,list])=>(
+          <div key={label}>
+            <div style={{fontSize:10,color:"#6e7681",padding:"8px 12px 3px",letterSpacing:1.5,textTransform:"uppercase"}}>{label}</div>
+            {list.map(dept => {
+              const absCnt = [...absentIds].filter(id=>ACTIVE_WORKERS.find(w=>w.id===id&&w.dept===dept)).length;
+              const pi2 = PROCESS_INFO[dept];
+              return (
+                <button key={dept} onClick={()=>{setSelectedDept(dept);setFocusId(null);}}
+                  style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",
+                    background:selectedDept===dept?"#161b22":"transparent",border:"none",
+                    borderLeft:selectedDept===dept?"2px solid #f59e0b":"2px solid transparent",
+                    padding:"6px 12px",cursor:"pointer",color:selectedDept===dept?"#f59e0b":"#8b949e",fontSize:11,textAlign:"left"}}>
+                  <span>{dept}</span>
+                  <div style={{display:"flex",alignItems:"center",gap:4}}>
+                    {pi2&&<span style={{fontSize:9,color:"#6e7681"}}>{pi2.score.toFixed(1)}</span>}
+                    {absCnt>0&&<span style={{background:"#f87171",color:"#fff",borderRadius:8,fontSize:9,padding:"1px 4px"}}>{absCnt}</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ))}
+        </div>
+      </div>
+
+      {/* CENTER: WORKER CARDS */}
+      <div style={{flex:1,overflowY:"auto",padding:20,minWidth:0}}>
+        <div style={{marginBottom:14}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+            <span style={{fontSize:20,fontWeight:700,color:"#f59e0b",letterSpacing:2}}>{selectedDept.toUpperCase()}</span>
+            {pi&&<GroupChip group={pi.group}/>}
+            {pi&&<span style={{fontSize:11,color:"#6e7681"}}>난이도 {pi.score.toFixed(1)} · {pi.floor}</span>}
+          </div>
+          <div style={{fontSize:11,color:"#6e7681"}}>
+            총 {deptWorkers.length}명 &nbsp;·&nbsp;
+            {absentInDept.length>0
+              ?<span style={{color:"#f87171"}}>결근 {absentInDept.length}명</span>
+              :<span style={{color:"#34d399"}}>결근자 없음</span>}
+            &nbsp;·&nbsp; 카드 <b style={{color:"#f87171"}}>+</b> 버튼으로 결근 등록
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(175px,1fr))",gap:8}}>
+          {deptWorkers.map(w => {
+            const isAbsent = absentIds.has(w.id);
+            const isFocus = focusId === w.id;
+            const recs = matchResults[w.id] || [];
+            return (
+              <div key={w.id}
+                id={"worker-card-"+w.id}
+                onClick={()=>isAbsent&&setFocusId(isFocus?null:w.id)}
+                style={{background:isAbsent?(isFocus?"#2d1a1a":"#1a1212"):"#161b22",
+                  border:isFocus?"1px solid #f87171":(searchResult&&searchResult!=="none"&&searchResult.id===w.id?"2px solid #2A8FCB":"1px solid #21262d"),
+                  borderRadius:4,padding:"10px 12px",cursor:isAbsent?"pointer":"default",
+                  opacity:isAbsent?0.75:1,position:"relative"}}>
+                <button onClick={e=>{e.stopPropagation();toggleAbsent(w.id);}}
+                  style={{position:"absolute",top:7,right:7,width:16,height:16,borderRadius:"50%",
+                    border:isAbsent?"1px solid #f87171":"1px solid #30363d",
+                    background:isAbsent?"#f87171":"transparent",
+                    color:isAbsent?"#fff":"#6e7681",fontSize:10,cursor:"pointer",
+                    display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>
+                  {isAbsent?"✕":"+"}
+                </button>
+                <div style={{fontSize:9,color:"#6e7681",marginBottom:3}}>{w.id}</div>
+                <div style={{fontSize:12,fontWeight:600,color:isAbsent?"#6e7681":"#e6edf3",
+                  textDecoration:isAbsent?"line-through":"none",marginBottom:4,lineHeight:1.3}}>
+                  {w.name}
+                </div>
+                <div style={{fontSize:9,color:"#8b949e",marginBottom:6,lineHeight:1.3,
+                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%"}}>
+                  {w.position}
+                </div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <GradeChip grade={w.grade} sub={w.subLevel}/>
+                  <GroupChip group={w.group}/>
+                </div>
+                {isAbsent&&isFocus&&recs.length>0&&(
+                  <div style={{marginTop:6,fontSize:9,color:"#8b949e"}}>→ {recs[0].name.split(" ").slice(-1)[0]} 외 {recs.length-1}명</div>
+                )}
+                {isAbsent&&!isFocus&&(
+                  <div style={{marginTop:5,fontSize:9,color:"#f87171",letterSpacing:.5}}>결근 · 클릭→추천</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* RIGHT: RECOMMENDATIONS */}
+      <div style={{width:300,background:"#0d1117",borderLeft:"1px solid #21262d",overflowY:"auto",padding:16,flexShrink:0}}>
+        {focusId && matchResults[focusId] ? (() => {
+          const absent = ACTIVE_WORKERS.find(w=>w.id===focusId);
+          const recs = matchResults[focusId];
+          return (<>
+            <div style={{background:"#1a1010",border:"1px solid #5c2a2a",borderRadius:6,padding:12,marginBottom:12}}>
+              <div style={{fontSize:9,color:"#f87171",letterSpacing:1.5,marginBottom:6}}>VACANCY</div>
+              <div style={{fontSize:13,fontWeight:700,color:"#f87171",marginBottom:2}}>{absent?.name}</div>
+              <div style={{fontSize:10,color:"#8b949e"}}>{absent?.dept} · {absent?.position}</div>
+              <div style={{display:"flex",gap:6,marginTop:6}}>
+                <GradeChip grade={absent?.grade} sub={absent?.subLevel}/>
+                <GroupChip group={absent?.group}/>
+                {absent&&<span style={{fontSize:9,color:"#6e7681"}}>난이도 {absent.processScore.toFixed(1)}</span>}
+              </div>
+            </div>
+            <div style={{fontSize:9,color:"#6e7681",letterSpacing:1.5,marginBottom:8}}>추천 대체 인원 TOP {recs.length}</div>
+            {recs.map((rec,i) => {
+              const sc = rec.matchScore;
+              const scColor = sc>=70?"#34d399":sc>=50?"#f59e0b":"#f87171";
+              return (
+                <div key={rec.id} style={{background:"#161b22",border:i===0?"1px solid #f59e0b":"1px solid #21262d",borderRadius:6,padding:12,marginBottom:8}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                    <span style={{fontSize:9,color:i===0?"#f59e0b":"#6e7681",fontWeight:700}}>#{i+1}</span>
+                    <span style={{fontSize:13,fontWeight:700,color:scColor}}>{sc}점</span>
+                  </div>
+                  <ScoreBar score={sc} color={scColor}/>
+                  <div style={{marginTop:8,fontSize:12,fontWeight:600,color:"#e6edf3",marginBottom:4}}>{rec.name}</div>
+                  <div style={{fontSize:10,color:"#8b949e",marginBottom:4}}>{rec.dept}</div>
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
+                    <GradeChip grade={rec.grade} sub={rec.subLevel}/>
+                    <GroupChip group={rec.group}/>
+                    <span style={{fontSize:9,color:rec.floor===absent?.floor?"#34d399":"#6e7681"}}>{rec.floor}{rec.floor===absent?.floor?" ✓":""}</span>
+                  </div>
+                  {rec.impactWarn
+                    ?<div style={{fontSize:9,background:"#3d1a1a",color:"#f87171",borderRadius:3,padding:"2px 6px"}}>⚠ 원공정 충격 {rec.impactPct}% — 주의</div>
+                    :<div style={{fontSize:9,color:"#6e7681"}}>원공정 충격 {rec.impactPct}%</div>}
+                </div>
+              );
+            })}
+          </>);
+        })() : (
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60%",color:"#6e7681",textAlign:"center",gap:10}}>
+            <div style={{fontSize:28}}>⊘</div>
+            <div style={{fontSize:11,lineHeight:1.7}}>카드 <b style={{color:"#f59e0b"}}>+</b> 버튼으로 결근 등록 후<br/>카드 클릭 시 추천이 표시됩니다</div>
+            {absentIds.size>0&&(
+              <div style={{width:"100%",marginTop:12,background:"#161b22",border:"1px solid #21262d",borderRadius:6,padding:10,fontSize:10}}>
+                <div style={{color:"#f87171",marginBottom:6}}>등록된 결근자 ({absentIds.size}명)</div>
+                {[...absentIds].map(id=>{const w=ACTIVE_WORKERS.find(x=>x.id===id);if(!w)return null;
+                  return <div key={id} style={{display:"flex",justifyContent:"space-between",padding:"2px 0",borderBottom:"1px solid #21262d",color:"#8b949e"}}><span>{w.name}</span><span>{w.dept}</span></div>;
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── REBALANCING ENGINE ───────────────────────────────────────────────────────
+// 결근율 높은 공정 ↔ 낮은 공정 간 인력 재배치 추천
+// 판단 기준: ① 결근율 편차 ② 그룹 호환성(매칭 알고리즘) ③ G레벨 적합성 ④ 소규모 공정 보호
+function computeRebalanceSuggestions(allRates, workers = WORKERS) {
+  const AVG = Object.values(allRates).reduce((s,v)=>s+v,0)/Object.values(allRates).length;
+  const HIGH_THRESH = AVG + 0.5; // 평균+0.5%p 이상 = 고결근 공정
+  const LOW_THRESH  = AVG - 0.5; // 평균-0.5%p 이하 = 저결근 공정
+
+  const highDepts = Object.entries(allRates)
+    .filter(([,r])=>r>=HIGH_THRESH)
+    .sort((a,b)=>b[1]-a[1])
+    .map(([d,r])=>({dept:d, rate:r, pi:PROCESS_INFO[d]}))
+    .filter(x=>x.pi && x.pi.group!=="F");
+
+  const lowDepts = Object.entries(allRates)
+    .filter(([,r])=>r<=LOW_THRESH)
+    .sort((a,b)=>a[1]-b[1])
+    .map(([d,r])=>({dept:d, rate:r, pi:PROCESS_INFO[d]}))
+    .filter(x=>x.pi && x.pi.group!=="F");
+
+  const suggestions = [];
+
+  for (const high of highDepts) {
+    // 고결근 공정에서 결근이 잦은 직원 찾기 (absentDays 높은 순)
+    const highWorkers = workers
+      .filter(w => w.dept === high.dept && w.gradeNum > 0)
+      .sort((a,b) => b.absentDays - a.absentDays)
+      .slice(0, 3);
+
+    for (const hw of highWorkers) {
+      for (const low of lowDepts) {
+        if (low.dept === high.dept) continue;
+        const lowWorkers = workers
+          .filter(w => w.dept === low.dept && w.gradeNum > 0)
+          .sort((a,b) => a.absentDays - b.absentDays)
+          .slice(0, 3);
+
+        for (const lw of lowWorkers) {
+          const hwToLow = computeScore({...hw, dept:high.dept}, {...lw, dept:low.dept});
+          const lwToHigh = computeScore({...lw, dept:low.dept}, {...hw, dept:high.dept});
+          const highN = workers.filter(w=>w.dept===high.dept).length||1;
+          const lowN  = workers.filter(w=>w.dept===low.dept).length||1;
+          if (highN <= 6 || lowN <= 6) continue;
+
+          // 그룹 호환성: 동일 그룹 or 인접 그룹만
+          const sameGroup = hw.group === lw.group;
+          const groupScore = sameGroup ? 30 : (
+            (hw.group==="A-1"&&lw.group==="A-2")||(hw.group==="A-2"&&lw.group==="A-1") ? 20 : 0
+          );
+          if (groupScore === 0) continue;
+
+          // G레벨 차이 (±1 이내만)
+          if (Math.abs(hw.gradeNum - lw.gradeNum) > 1) continue;
+
+          // 결근율 편차 개선 효과
+          const rateDiff = high.rate - low.rate;
+          if (rateDiff < 0.3) continue; // 차이가 너무 작으면 스킵
+
+          // 종합 추천 점수
+          const compatScore = Math.max(0, hwToLow) + Math.max(0, lwToHigh);
+          const totalScore = groupScore + compatScore * 0.3 + rateDiff * 10;
+
+          suggestions.push({
+            highDept: high.dept, highRate: high.rate,
+            lowDept:  low.dept,  lowRate:  low.rate,
+            rateDiff: +(rateDiff).toFixed(2),
+            hwId: hw.id, hwName: hw.name, hwGrade: hw.grade, hwGroup: hw.group,
+            hwAbsent: hw.absentDays, hwSubLevel: hw.subLevel,
+            lwId: lw.id, lwName: lw.name, lwGrade: lw.grade, lwGroup: lw.group,
+            lwAbsent: lw.absentDays, lwSubLevel: lw.subLevel,
+            sameGroup, compatScore: +compatScore.toFixed(1),
+            totalScore: +totalScore.toFixed(1),
+          });
+        }
+      }
+    }
+  }
+
+  // 중복 제거 (같은 직원 쌍 중 최고점만) 및 상위 8개
+  const seen = new Set();
+  return suggestions
+    .sort((a,b)=>b.totalScore-a.totalScore)
+    .filter(s=>{
+      const key = [s.hwId,s.lwId].sort().join("|");
+      if(seen.has(key)) return false;
+      seen.add(key); return true;
+    })
+    .slice(0, 8);
+}
+
+// ─── ABSENCE TAB COMPONENT ────────────────────────────────────────────────────
+function AbsenceTab({ workers: ACTIVE_WORKERS = WORKERS, absenceRates = LINE_ABS_RATES, workerAbsMap = {} }) {
+  const [groupFilter, setGroupFilter] = useState("ALL");
+
+  const statusStyle = s=>({
+    danger:{bg:"#FCEBEB",color:"#A32D2D",label:"위험"},
+    warning:{bg:"#FAEEDA",color:"#854F0B",label:"주의"},
+    good:{bg:"#E1F5EE",color:"#085041",label:"양호"},
+  }[s]||{bg:"#eee",color:"#333",label:"-"});
+
+  // absenceRates: App에서 이미 계산된 값을 그대로 사용
+  // (파일6 미업로드 → LINE_ABS_RATES, 업로드 → 업로드 데이터 기반)
+  const allRates = Object.entries(absenceRates)
+    .map(([dept,rate])=>({dept,rate,status:getLineStatus(rate),
+      headcount: ACTIVE_WORKERS.filter(w=>w.dept===dept).length || DEPT_HEADCOUNT[dept]||0}))
+    .sort((a,b)=>b.rate-a.rate);
+
+  const groupLabels = {
+    "ALL":"전체","A-1":"A-1 봉제2F","A-2":"A-2 봉제1F",
+    "B":"B 전용기계","C":"C 보조","D":"D 재단","E":"E 후공정",
+  };
+
+  const filteredRates = groupFilter === "ALL"
+    ? allRates
+    : allRates.filter(r => (PROCESS_INFO[r.dept]?.group || "") === groupFilter);
+
+  const suggestions = useMemo(
+    () => computeRebalanceSuggestions(absenceRates, ACTIVE_WORKERS),
+    [absenceRates, ACTIVE_WORKERS]
+  );
+
+  const avg = Object.values(absenceRates).reduce((s,v)=>s+v,0)/Math.max(Object.values(absenceRates).length,1);
+
+  return (
+    <div>
+      {/* KPI 요약 */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
+        {[
+          ["전체 공정 수", Object.keys(absenceRates).length+"개", "#8b949e"],
+          ["위험 공정 (≥6.5%)", allRates.filter(l=>l.status==="danger").length+"개", "#f87171"],
+          ["주의 공정 (≥5.5%)", allRates.filter(l=>l.status==="warning").length+"개", "#f59e0b"],
+          ["전체 평균 결근율", avg.toFixed(2)+"%", "#34d399"],
+        ].map(([label,val,col])=>(
+          <div key={label} style={{background:"#161b22",border:"1px solid #21262d",borderRadius:6,padding:"10px 14px"}}>
+            <div style={{fontSize:10,color:"#6e7681",marginBottom:3}}>{label}</div>
+            <div style={{fontSize:18,fontWeight:700,color:col}}>{val}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* 그룹 필터 */}
+      <div style={{display:"flex",gap:5,marginBottom:8,flexWrap:"wrap"}}>
+        {Object.entries(groupLabels).map(([key,label])=>{
+          const [bg,col] = key==="ALL" ? ["#21262d","#e6edf3"] : (GROUP_COLOR[key]||["#21262d","#e6edf3"]);
+          const isActive = groupFilter===key;
+          return (
+            <button key={key} onClick={()=>setGroupFilter(key)}
+              style={{padding:"3px 10px",borderRadius:4,border:"none",cursor:"pointer",fontSize:10,fontWeight:600,
+                background:isActive?bg:"transparent",color:isActive?col:"#6e7681",
+                outline:isActive?`1.5px solid ${col}`:"none"}}>
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{fontSize:10,color:"#6e7681",marginBottom:10}}>
+        임계치: 🔴 위험 ≥6.5% | 🟡 주의 ≥5.5% | 🟢 양호 &lt;5.5% · 기준: 3-4월 정상 운영 평균 {avg.toFixed(2)}%
+      </div>
+
+      {/* 공정 결근율 카드 그리드 */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:24}}>
+        {filteredRates.map(({dept,rate,status,headcount})=>{
+          const st = statusStyle(status);
+          const barCol = status==="danger"?"#f87171":status==="warning"?"#f59e0b":"#34d399";
+          const pi = PROCESS_INFO[dept];
+          const [gbg,gcol] = GROUP_COLOR[pi?.group||"F"]||["#eee","#333"];
+          return (
+            <div key={dept} style={{background:"#161b22",border:"1px solid #21262d",borderRadius:6,padding:"10px 12px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:5}}>
+                <div>
+                  <div style={{fontSize:11,fontWeight:600,color:"#e6edf3",marginBottom:2}}>{dept}</div>
+                  <span style={{fontSize:9,padding:"1px 5px",borderRadius:3,background:gbg,color:gcol}}>{pi?.group||"?"}</span>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3}}>
+                  <span style={{fontSize:9,color:"#6e7681"}}>{headcount}명</span>
+                  <span style={{fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:3,background:st.bg,color:st.color}}>{st.label}</span>
+                </div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6}}>
+                <div style={{flex:1,height:5,background:"#21262d",borderRadius:3,overflow:"hidden"}}>
+                  <div style={{width:`${Math.min(rate/8*100,100)}%`,height:"100%",background:barCol,borderRadius:3}}/>
+                </div>
+                <span style={{fontSize:11,fontWeight:700,color:barCol,width:36,textAlign:"right"}}>{rate}%</span>
+              </div>
+              {status!=="good"&&(
+                <div style={{marginTop:4,fontSize:9,color:"#6e7681"}}>
+                  {status==="danger"?"→ 매칭 우선 대체 풀 배정 권장":"→ 모니터링 권장"}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 인력 재배치 추천 */}
+      <div style={{borderTop:"1px solid #21262d",paddingTop:18}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#f59e0b"}}>🔄 인력 재배치 추천</div>
+        </div>
+        {suggestions.length === 0 ? (
+          <div style={{textAlign:"center",color:"#34d399",padding:"24px 0",fontSize:12}}>
+            ✓ 현재 공정 간 결근율 편차가 낮아 재배치 추천 없음
+          </div>
+        ) : suggestions.map((s,i)=>{
+          const diffCol = s.rateDiff >= 1.0 ? "#f87171" : s.rateDiff >= 0.5 ? "#f59e0b" : "#8b949e";
+          const compatCol = s.compatScore >= 60 ? "#34d399" : s.compatScore >= 30 ? "#f59e0b" : "#f87171";
+          const [hbg,hcol] = GROUP_COLOR[s.hwGroup]||["#eee","#333"];
+          const [lbg,lcol] = GROUP_COLOR[s.lwGroup]||["#eee","#333"];
+          return (
+            <div key={i} style={{background:"#161b22",border:"1px solid #21262d",
+              borderLeft:`3px solid ${i===0?"#f59e0b":"#30363d"}`,
+              borderRadius:6,padding:"12px 14px",marginBottom:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                <span style={{fontSize:10,color:i===0?"#f59e0b":"#6e7681",fontWeight:700}}>#{i+1}</span>
+                <span style={{fontSize:10,color:"#6e7681"}}>결근율 편차</span>
+                <span style={{fontSize:11,fontWeight:700,color:diffCol}}>↓{s.rateDiff}%p</span>
+
+                {s.sameGroup&&<span style={{fontSize:9,padding:"1px 5px",borderRadius:3,background:"#E1F5EE",color:"#085041"}}>동일그룹</span>}
+              </div>
+
+              {/* 스왑 카드 */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 32px 1fr",gap:6,alignItems:"center"}}>
+                {/* 고결근 직원 → 저결근 공정으로 */}
+                <div style={{background:"#1e1010",border:"1px solid #5c2a2a",borderRadius:5,padding:"8px 10px"}}>
+                  <div style={{fontSize:9,color:"#f87171",marginBottom:3}}>고결근 공정 ({s.highRate}%)</div>
+                  <div style={{fontSize:10,fontWeight:700,color:"#e6edf3",marginBottom:2}}>{s.hwName}</div>
+                  <div style={{fontSize:9,color:"#8b949e",marginBottom:4}}>{s.highDept}</div>
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                    <span style={{fontSize:9,padding:"1px 5px",borderRadius:3,
+                      background:`${GRADE_COLOR[s.hwGrade]||"#6b7280"}22`,
+                      color:GRADE_COLOR[s.hwGrade]||"#6b7280"}}>{s.hwSubLevel||s.hwGrade}</span>
+                    <span style={{fontSize:9,padding:"1px 4px",borderRadius:3,background:hbg,color:hcol}}>{s.hwGroup}</span>
+                    <span style={{fontSize:9,color:"#f87171"}}>결근 {s.hwAbsent}일</span>
+                  </div>
+                </div>
+
+                <div style={{textAlign:"center",fontSize:14,color:"#6e7681"}}>⇄</div>
+
+                {/* 저결근 직원 → 고결근 공정으로 */}
+                <div style={{background:"#101e10",border:"1px solid #2a5c2a",borderRadius:5,padding:"8px 10px"}}>
+                  <div style={{fontSize:9,color:"#34d399",marginBottom:3}}>저결근 공정 ({s.lowRate}%)</div>
+                  <div style={{fontSize:10,fontWeight:700,color:"#e6edf3",marginBottom:2}}>{s.lwName}</div>
+                  <div style={{fontSize:9,color:"#8b949e",marginBottom:4}}>{s.lowDept}</div>
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                    <span style={{fontSize:9,padding:"1px 5px",borderRadius:3,
+                      background:`${GRADE_COLOR[s.lwGrade]||"#6b7280"}22`,
+                      color:GRADE_COLOR[s.lwGrade]||"#6b7280"}}>{s.lwSubLevel||s.lwGrade}</span>
+                    <span style={{fontSize:9,padding:"1px 4px",borderRadius:3,background:lbg,color:lcol}}>{s.lwGroup}</span>
+                    <span style={{fontSize:9,color:"#34d399"}}>결근 {s.lwAbsent}일</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── HR MANAGEMENT DASHBOARD ──────────────────────────────────────────────────
+function HRDashboard({ workers: ACTIVE_WORKERS = WORKERS, absenceRates = LINE_ABS_RATES, workerAbsMap = {} }) {
+  const [hrTab, setHrTab] = useState("absence");
+  const riskScores = useMemo(()=>computeRiskScores(ACTIVE_WORKERS, absenceRates),[ACTIVE_WORKERS, absenceRates]);
+  const chronic = useMemo(()=>computeChronicAbsentees(ACTIVE_WORKERS, workerAbsMap),[ACTIVE_WORKERS, workerAbsMap]);
+
+  return (
+    <div style={{flex:1,overflowY:"auto",padding:24,background:"#0d1117"}}>
+      <div style={{display:"flex",gap:6,marginBottom:20,borderBottom:"1px solid #21262d",paddingBottom:0}}>
+        {[["absence","📊 분기 결근율"],["risk","⚠ 인력 보충 선순위"],["chronic","🚨 만성 결근자"]].map(([key,label])=>(
+          <button key={key} onClick={()=>setHrTab(key)}
+            style={{padding:"7px 14px",background:"transparent",border:"none",
+              borderBottom:hrTab===key?"2px solid #f59e0b":"2px solid transparent",
+              color:hrTab===key?"#f59e0b":"#8b949e",cursor:"pointer",fontSize:12,fontWeight:500,marginBottom:-1}}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {hrTab==="absence"&&(
+        <AbsenceTab workers={ACTIVE_WORKERS} absenceRates={absenceRates} workerAbsMap={workerAbsMap}/>
+      )}
+
+      {hrTab==="risk"&&(
+        <div>
+          <div style={{fontSize:11,color:"#6e7681",marginBottom:12,lineHeight:1.7}}>
+            복합 위험 스코어 = 결근율(40%) + 공정 난이도(35%) + 생산흐름 상류여부(25%)<br/>
+            <span style={{color:"#f87171"}}>🔴 70+</span> 즉시 인력 보충 | <span style={{color:"#f59e0b"}}>🟡 50~70</span> 우선 모니터링 | <span style={{color:"#34d399"}}>🟢 50미만</span> 정상
+          </div>
+          {riskScores.slice(0,20).map((r,i)=>{
+            const col=r.riskScore>=70?"#f87171":r.riskScore>=50?"#f59e0b":"#34d399";
+            const [gbg,gcol]=GROUP_COLOR[r.group]||["#eee","#333"];
+            return (
+              <div key={r.dept} style={{background:"#161b22",border:"1px solid #21262d",borderRadius:6,padding:"10px 14px",marginBottom:6,display:"flex",alignItems:"center",gap:12}}>
+                <div style={{width:20,fontSize:11,color:"#6e7681",fontWeight:700}}>#{i+1}</div>
+                <div style={{flex:1}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                    <span style={{fontSize:12,fontWeight:600,color:"#e6edf3"}}>{r.dept}</span>
+                    <span style={{fontSize:9,padding:"1px 5px",borderRadius:3,background:gbg,color:gcol}}>{r.group}</span>
+                    <span style={{fontSize:10,color:"#6e7681"}}>난이도 {r.score.toFixed(1)} · {r.headcount}명</span>
+                  </div>
+                  <div style={{fontSize:10,color:"#6e7681",display:"flex",gap:12}}>
+                    <span>결근율 {r.absRate}%</span>
+                    <span>상류 {((UPSTREAM[r.dept]??0.3)*100).toFixed(0)}%</span>
+                  </div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:18,fontWeight:800,color:col}}>{r.riskScore}</div>
+                  <div style={{fontSize:9,color:"#6e7681"}}>위험점수</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {hrTab==="chronic"&&(
+        <div>
+          <div style={{fontSize:11,color:"#6e7681",marginBottom:12,lineHeight:1.7}}>
+            기준: 3-4월(2개월) 결근 8일+ → 위험 플래그 | <span style={{color:"#f87171"}}>이직위험</span>: G2~G3 | <span style={{color:"#f59e0b"}}>번아웃</span>: G4+
+          </div>
+          {chronic.length===0?(
+            <div>
+              <div style={{textAlign:"center",color:"#34d399",padding:"30px 0",fontSize:13}}>✓ 현재 만성 결근자 없음 (2개월 기준 8일 미만)</div>
+              <div style={{background:"#161b22",border:"1px solid #21262d",borderRadius:6,padding:14,fontSize:11,color:"#6e7681",marginTop:12}}>
+                <div style={{marginBottom:6,color:"#e6edf3",fontWeight:600}}>탐지 기준</div>
+                <div>• 3-4월 합산 결근 8일+ → 위험 플래그</div>
+                <div>• G2~G3: 이직 위험 → 면담 및 인센티브 검토</div>
+                <div>• G4+: 번아웃 신호 → 별도 케어 프로세스</div>
+              </div>
+            </div>
+          ):chronic.map(w=>{
+            const fc=w.flag==="burnout"?"#f59e0b":"#f87171";
+            const fl=w.flag==="burnout"?"번아웃 위험":"이직 위험";
+            return (
+              <div key={w.id} style={{background:"#161b22",border:`1px solid ${fc}44`,borderLeft:`3px solid ${fc}`,borderRadius:6,padding:"10px 14px",marginBottom:6}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                      <span style={{fontSize:12,fontWeight:600,color:"#e6edf3"}}>{w.name}</span>
+                      <GradeChip grade={w.grade} sub={w.subLevel}/>
+                    </div>
+                    <div style={{fontSize:10,color:"#8b949e"}}>{w.dept} · {w.position}</div>
+                    <div style={{fontSize:10,color:"#6e7681",marginTop:2}}>재직 {w.tenure.toFixed(0)}개월</div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:20,fontWeight:800,color:fc}}>{w.absentDays}일</div>
+                    <div style={{fontSize:9,padding:"1px 6px",borderRadius:3,background:`${fc}22`,color:fc}}>{fl}</div>
+                    <div style={{fontSize:9,color:"#6e7681",marginTop:3}}>→ 면담 트리거</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ROOT ─────────────────────────────────────────────────────────────────────
+const LOGO_B64 = "data:image/png;base64,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";
+
+function App() {
+  const [mainTab, setMainTab] = useState("matching");
+  const [uploadedWorkers, setUploadedWorkers] = useState(null);
+  const [uploadedAbsence, setUploadedAbsence] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState({f1:null,f6:null});
+  const today = new Date().toLocaleDateString("ko-KR",{year:"numeric",month:"2-digit",day:"2-digit"});
+
+  const activeWorkers = uploadedWorkers || WORKERS;
+
+  const handleUpload = async (e, fileType) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadStatus(prev=>({...prev,[fileType]:"loading"}));
+    try {
+      const XLSX = await import("https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs");
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf);
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1});
+
+      if (fileType === "f1") {
+        // ── 파일1 파싱 ─────────────────────────────────────────────
+        // 핵심 로직:
+        //  1) STT 숫자 행이 가장 많은 시트를 자동 선택 (SheetNames[0] 고정 X)
+        //  2) STT(col0)가 양의 정수인 행 = 직원 행으로 판단
+        //  3) 헤더 행에서 열 위치를 동적으로 탐색
+        const grade_num_map = {G1:1,G2:2,G3:3,G4:4,G5:5};
+        const ts_depts = new Set(["TS07.25","TS08.25","TS09.25","TS10.25","TS11.25","TS12.25","TS01.26"]);
+
+        // STEP 1: STT 숫자 행이 가장 많은 시트 선택
+        let bestSheetName = wb.SheetNames[0];
+        let bestCount = 0;
+        for (const sName of wb.SheetNames) {
+          const sRows = XLSX.utils.sheet_to_json(wb.Sheets[sName], {header:1});
+          let cnt = 0;
+          for (const sRow of sRows) {
+            if (!sRow) continue;
+            const sv = sRow[0];
+            if (typeof sv === 'number' && Number.isInteger(sv) && sv > 0) cnt++;
+          }
+          if (cnt > bestCount) { bestCount = cnt; bestSheetName = sName; }
+        }
+        const mainWs = wb.Sheets[bestSheetName];
+        const rows = XLSX.utils.sheet_to_json(mainWs, {header:1});
+
+        // STEP 2: 헤더 행에서 열 위치 탐색 (기본값: 원본 파일 기준)
+        let colCode=1, colDept=3, colPos=4, colName=5, colGrade=9, colDate=2;
+        for (let i = 0; i < Math.min(rows.length, 30); i++) {
+          const row = rows[i];
+          if (!row) continue;
+          let found = false;
+          for (let j = 0; j < row.length; j++) {
+            const v = String(row[j]||"").trim().toUpperCase();
+            if (v === "CODE" || v === "MSNV") { colCode = j; found = true; }
+            if (v === "FULLNAME" || v === "HỌ VÀ TÊN" || v === "FULL NAME") colName = j;
+            if (v === "DEPARTMENT" || v === "DEPT") colDept = j;
+            if (v === "POSITIONS" || v === "POSITION") colPos = j;
+            if (v.startsWith("GRADE")) colGrade = j;
+            if (v === "STATED DATE" || v === "START DATE") colDate = j;
+          }
+          if (found) break;
+        }
+
+        // STEP 3: STT(col0)가 양의 정수인 행 = 직원 행으로 파싱
+        const parsed = [];
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row) continue;
+          const stt = row[0];
+          // STT가 양의 정수인 행만 직원으로 인식
+          if (typeof stt !== 'number' || !Number.isInteger(stt) || stt <= 0) continue;
+          const dept = String(row[colDept]||"").trim();
+          if (ts_depts.has(dept)) continue;
+          const id = String(row[colCode]||"").trim();
+          if (!id) continue;
+          const position = String(row[colPos]||"").trim();
+          const name = String(row[colName]||"").trim();
+          const rawGrade = row[colGrade];
+          const grade = (rawGrade !== undefined && rawGrade !== null && String(rawGrade).trim())
+            ? String(rawGrade).trim() : "--";
+          const pi = PROCESS_INFO[dept]||{group:"F",score:0,floor:"1F"};
+          const gn = grade_num_map[grade]||0;
+          const sub = grade==="G3"?"G3-A":grade==="G4"?"G4-A":grade;
+          let startMs = 0;
+          try {
+            const rawDate = row[colDate];
+            if (rawDate !== undefined && rawDate !== null) {
+              const raw = String(rawDate).trim();
+              if (/^\d+$/.test(raw)) {
+                startMs = (parseInt(raw) - 25569) * 86400 * 1000;
+              } else if (raw.includes("/")) {
+                const p = raw.split("/");
+                if (p.length === 3) startMs = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0])).getTime();
+              } else {
+                startMs = new Date(raw).getTime();
+              }
+            }
+          } catch(e){}
+          const tenure = (startMs && !isNaN(startMs))
+            ? Math.round((new Date("2026-04-01").getTime()-startMs)/(1000*60*60*24*30.44)*10)/10 : 0;
+          parsed.push({id, name, dept, position,
+            grade, gradeNum:gn, subLevel:sub, tenure,
+            group:pi.group, processScore:pi.score, floor:pi.floor, absentDays:0});
+        }
+        setUploadedWorkers(parsed);
+        setUploadStatus(prev=>({...prev,f1:`✓ ${parsed.length}명 로드됨`}));
+            } else {
+        // 파일6 파싱: 근태 (시트별 결근일 합산)
+        // 실제 파일 구조:
+        //   row 10: 날짜, row 11: 요일(영), row 12: 요일(베트남어), row 13~: 직원 데이터
+        //   col 0: STT(번호), col 1: 사번(MSNV), col 5: 부서, col 7~: 일별 출결
+        // STT가 양의 정수인 행만 직원 행으로 인식 (F/OR 코드 모두 포함)
+        const absMap = {};
+        for (const shName of wb.SheetNames) {
+          if (!["01","02","03","04","05","06","07","08","09","10","11","12"].includes(shName.trim())) continue;
+          const shRows = XLSX.utils.sheet_to_json(wb.Sheets[shName], {header:1});
+          // 날짜 행(row 10) 파싱 → 일요일 제외용
+          const dateRow = shRows[10] ? shRows[10].slice(7) : [];
+          const dayOfWeeks = (shRows[11] ? shRows[11].slice(7) : []).map(v=>String(v||"").trim());
+          for (let i = 13; i < shRows.length; i++) {
+            const row = shRows[i];
+            if (!row) continue;
+            // STT(col0)가 양의 정수인 행만 직원 행으로 인식
+            const stt = row[0];
+            if (typeof stt !== 'number' || !Number.isInteger(stt) || stt <= 0) continue;
+            const rawId = row[1];
+            if (!rawId) continue;
+            const id = String(rawId).trim();
+            if (!id) continue;
+            const daily = row.slice(7);
+            let abs = 0;
+            for (let j = 0; j < daily.length; j++) {
+              // 일요일(Sun/Chủ Nhật) 제외
+              const dow = dayOfWeeks[j] || "";
+              if (dow === "Sun" || dow === "Chủ Nhật") continue;
+              const val = daily[j];
+              if (!val && val !== 0) continue;
+              const v = String(val).trim().toUpperCase();
+              if (!v || v === "NAN") continue;
+              if (!isNaN(parseFloat(v))) continue; // 숫자(근무시간)는 건너뜀
+              if (["KP","NB","HL"].some(c=>v.includes(c))) abs += v.includes("/2")?0.5:1;
+            }
+            if (abs > 0) absMap[id] = (absMap[id]||0) + abs;
+          }
+        }
+        setUploadedAbsence(absMap);
+        setUploadStatus(prev=>({...prev,f6:`✓ ${Object.keys(absMap).length}명 근태 로드됨`}));
+      }
+    } catch(err) {
+      setUploadStatus(prev=>({...prev,[fileType]:`오류: ${err.message}`}));
+    }
+  };
+
+  // ── CSV 근태 추출 함수 ──────────────────────────────────────────────────
+  const handleExportCSV = () => {
+    const today = new Date();
+    const dateStr = today.toLocaleDateString("ko-KR",{year:"numeric",month:"2-digit",day:"2-digit"}).replace(/\. /g,"-").replace(/\./g,"");
+    const timeStr = today.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"});
+
+    const escape = v => `"${String(v||"").replace(/"/g,'""')}"`;
+    const csvRows = [];
+
+    // ── 헤더 (Excel 열기 시 자동 필터 적용 가능) ─────────────────────
+    csvRows.push(["사번(Code)","이름","공정(Dept)","직책(Position)","G레벨","결근여부"].map(escape).join(","));
+
+    // ── 직원 데이터 (원래 순서 그대로) ───────────────────────────────
+    finalWorkers.forEach(w => {
+      const isAbsent = absentIdsRef.current.has(w.id);
+      const grade = w.subLevel && w.subLevel !== w.grade ? w.subLevel : w.grade;
+      csvRows.push([
+        escape(w.id),
+        escape(w.name),
+        escape(w.dept),
+        escape(w.position),
+        escape(grade),
+        escape(isAbsent ? "X" : "O")
+      ].join(","));
+    });
+
+    // ── 하단 요약: 공정별 결근 현황 ──────────────────────────────────
+    csvRows.push(["","","","","",""].join(","));
+    csvRows.push([escape("=== 공정별 요약 ==="),"","","","",""].join(","));
+    csvRows.push([escape("공정"),escape("총인원"),escape("결근"),escape("출근"),escape("결근율"),""].join(","));
+    const deptSummary = {};
+    finalWorkers.forEach(w => {
+      if (!deptSummary[w.dept]) deptSummary[w.dept] = {total:0, absent:0};
+      deptSummary[w.dept].total++;
+      if (absentIdsRef.current.has(w.id)) deptSummary[w.dept].absent++;
+    });
+    Object.entries(deptSummary)
+      .sort((a,b) => a[0].localeCompare(b[0]))
+      .forEach(([dept,{total,absent}]) => {
+        const rate = total > 0 ? ((absent/total)*100).toFixed(1)+"%" : "0%";
+        csvRows.push([escape(dept),total,absent,total-absent,escape(rate),""].join(","));
+      });
+    const totalAbsent = absentIdsRef.current.size;
+    const totalAll = finalWorkers.length;
+    csvRows.push(["","","","","",""].join(","));
+    csvRows.push([escape("전체 합계"),totalAll,totalAbsent,totalAll-totalAbsent,escape(((totalAbsent/totalAll)*100).toFixed(1)+"%"),""].join(","));
+
+    const csvContent = "\uFEFF" + csvRows.join("\n");
+    const blob = new Blob([csvContent], {type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `AJS_근태_${dateStr}_${timeStr.replace(":","")}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // 결근 ID를 ref로도 관리 (CSV 추출 시 closure 문제 방지)
+  const absentIdsRef = React.useRef(new Set());
+
+  // 매칭시스템: 직원 목록만 필요 (absentDays는 매칭에 불필요)
+  const finalWorkers = activeWorkers;
+
+  // HR탭 전용: 부서별 결근율 데이터 소스 계산
+  // - 파일6 미업로드: LINE_ABS_RATES 하드코딩 기준선 사용
+  // - 파일6 업로드: 업로드된 근태 데이터로 부서별 결근율 재계산
+  const hrAbsenceRates = useMemo(() => {
+    if (!uploadedAbsence) return LINE_ABS_RATES; // 기본값: 하드코딩 기준선
+    // 부서별 인원 수 (activeWorkers 기준)
+    const deptN = {};
+    activeWorkers.forEach(w => { deptN[w.dept] = (deptN[w.dept]||0)+1; });
+    // 업로드된 근태 데이터로 부서별 결근율 계산
+    // uploadedAbsence: {id: absentDays} map
+    const deptAbs = {};
+    Object.entries(uploadedAbsence).forEach(([id, days]) => {
+      const w = activeWorkers.find(x => x.id === id);
+      if (!w) return;
+      deptAbs[w.dept] = (deptAbs[w.dept]||0) + days;
+    });
+    const rates = {};
+    Object.entries(deptN).forEach(([dept, n]) => {
+      if (!PROCESS_INFO[dept]) return;
+      const totalPossible = n * 26 * 2; // 2개월 기준
+      const abs = deptAbs[dept]||0;
+      const rate = +(abs / totalPossible * 100).toFixed(2);
+      if (rate > 0) rates[dept] = rate;
+    });
+    return Object.keys(rates).length > 0 ? rates : LINE_ABS_RATES;
+  }, [uploadedAbsence, activeWorkers]);
+
+  // HR탭 전용: 직원별 결근일 map (만성결근자 탐지용)
+  const hrWorkerAbsence = useMemo(() => {
+    if (!uploadedAbsence) {
+      // 기본값: RAW_DATA의 absentDays 사용
+      const map = {};
+      WORKERS.forEach(w => { if(w.absentDays > 0) map[w.id] = w.absentDays; });
+      return map;
+    }
+    return uploadedAbsence;
+  }, [uploadedAbsence]);
+
+  return (
+    <div style={{fontFamily:"'IBM Plex Mono','Courier New',monospace",background:"#0d1117",minHeight:"100vh",color:"#e6edf3",display:"flex",flexDirection:"column"}}>
+      {/* TOP BAR */}
+      <div style={{background:"#0d1117",borderBottom:"1px solid #21262d",padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:16}}>
+          {/* AJ Solutions 로고 */}
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <img src={LOGO_B64} alt="AJ Solutions" style={{width:32,height:32,objectFit:"contain"}}/>
+            <div>
+              <div style={{fontFamily:"'Archivo','IBM Plex Mono',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"#e6edf3",lineHeight:1.1}}>AJ SOLUTIONS</div>
+              <div style={{fontFamily:"'Archivo',sans-serif",fontSize:9,fontWeight:500,letterSpacing:"0.18em",color:"#6e7681",textTransform:"uppercase"}}>Production HR System</div>
+            </div>
+          </div>
+          <div style={{width:1,height:28,background:"#21262d"}}/>
+          {/* 탭 버튼 */}
+          {[["matching","매칭 시스템"],["hr","HR 관리"]].map(([key,label])=>(
+            <button key={key} onClick={()=>setMainTab(key)}
+              style={{padding:"5px 14px",background:mainTab===key?"#161b22":"transparent",border:"none",
+                borderRadius:4,color:mainTab===key?"#2A8FCB":"#8b949e",cursor:"pointer",fontSize:12,fontWeight:500,
+                borderBottom:mainTab===key?"2px solid #2A8FCB":"2px solid transparent"}}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {/* 우측: 파일 업로드 + 날짜 */}
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          {/* CSV 추출 버튼 */}
+          <button onClick={handleExportCSV}
+            style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",
+              background:"#161b22",border:"1px solid #30363d",borderRadius:5,padding:"4px 10px",fontSize:10,
+              color:"#8b949e",outline:"none"}}>
+            <span style={{color:"#34d399"}}>📥</span>
+            <span>근태 데이터 추출</span>
+          </button>
+          {/* 파일1 업로드 */}
+          <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",
+            background:"#161b22",border:"1px solid #30363d",borderRadius:5,padding:"4px 10px",fontSize:10}}>
+            <span style={{color:"#2A8FCB"}}>📁</span>
+            <span style={{color:"#8b949e"}}>직원명단 리스트</span>
+            {uploadStatus.f1&&<span style={{color:uploadStatus.f1.startsWith("✓")?"#34d399":"#f87171"}}>{uploadStatus.f1}</span>}
+            <input type="file" accept=".xlsx,.xls" style={{display:"none"}} onChange={e=>handleUpload(e,"f1")}/>
+          </label>
+          {/* 파일6 업로드 */}
+          <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",
+            background:"#161b22",border:"1px solid #30363d",borderRadius:5,padding:"4px 10px",fontSize:10}}>
+            <span style={{color:"#2A8FCB"}}>📁</span>
+            <span style={{color:"#8b949e"}}>근태 리스트</span>
+            {uploadStatus.f6&&<span style={{color:uploadStatus.f6.startsWith("✓")?"#34d399":"#f87171"}}>{uploadStatus.f6}</span>}
+            <input type="file" accept=".xlsx,.xls" style={{display:"none"}} onChange={e=>handleUpload(e,"f6")}/>
+          </label>
+          <div style={{fontSize:10,color:"#6e7681"}}>{today} · {finalWorkers.length}명</div>
+        </div>
+      </div>
+      {/* MAIN */}
+      <div style={{flex:1,display:"flex",overflow:"hidden",minHeight:0}}>
+        {mainTab==="matching"
+          ?<MatchingDashboard workers={finalWorkers} onAbsentChange={ids=>{absentIdsRef.current=ids;}}/>
+          :<HRDashboard workers={finalWorkers} absenceRates={hrAbsenceRates} workerAbsMap={hrWorkerAbsence}/>}
+      </div>
+    </div>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+</script>
+</body>
+</html>
